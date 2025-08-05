@@ -82,3 +82,341 @@ body {
 .card-content {
   color: #4a5568;
 }
+
+
+
+/* Schedule View Styling */
+.schedule-grid {
+  display: flex;
+  overflow-x: auto; /* Allows horizontal scrolling on small screens */
+  padding: 16px 8px;
+  gap: 8px;
+}
+
+.day-column {
+  flex: 1;
+  min-width: 150px; /* Minimum width for each day column */
+  background-color: #f4f4f5;
+  border-radius: 8px;
+  padding: 8px;
+}
+
+.day-header {
+  font-weight: bold;
+  text-align: center;
+  padding: 8px 0;
+  margin-bottom: 8px;
+  color: #333;
+}
+
+.class-card, .no-class-card {
+  background-color: #ffffff;
+  border-radius: 6px;
+  padding: 12px;
+  margin-bottom: 8px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+
+.no-class-card {
+    text-align: center;
+    color: #999;
+    font-style: italic;
+}
+
+.class-time {
+  font-size: 12px;
+  font-weight: 500;
+  color: #e53e3e; /* A red color for the time */
+  margin: 0 0 4px 0;
+}
+
+.class-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: #2d3748;
+  margin: 0 0 2px 0;
+}
+
+.class-teacher {
+  font-size: 12px;
+  color: #718096;
+  margin: 0;
+}
+
+/* Notes Module Styling */
+.note-list-container {
+  padding-bottom: 80px; /* Space for the floating button */
+}
+
+.note-item {
+  display: flex;
+  align-items: center;
+  background-color: #fff;
+  padding: 16px;
+  border-bottom: 1px solid #e2e8f0;
+  cursor: pointer;
+}
+
+.note-item:hover {
+  background-color: #f7fafc;
+}
+
+.note-item-icon {
+  color: #4a5568;
+  margin-right: 16px;
+}
+
+.note-item-title {
+  font-size: 16px;
+  color: #2d3748;
+}
+
+.empty-notes-message {
+    text-align: center;
+    margin-top: 40px;
+    color: #718096;
+}
+
+.fab-button { /* Floating Action Button */
+  position: fixed;
+  bottom: 80px; /* Above the bottom nav */
+  right: 20px;
+  background-color: #007bff;
+  color: white;
+  border: none;
+  border-radius: 28px;
+  height: 56px;
+  padding: 0 20px;
+  box-shadow: 0 4px 12px rgba(0, 123, 255, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  font-weight: 500;
+  gap: 8px;
+  z-index: 1001;
+}
+
+/* Note Editor Styling */
+.note-editor-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: #fff;
+  z-index: 2000;
+  display: flex;
+  flex-direction: column;
+}
+
+.note-editor-header {
+  display: flex;
+  align-items: center;
+  padding: 8px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.back-button, .save-button {
+  background: none;
+  border: none;
+  padding: 8px;
+  color: #007bff;
+}
+
+.title-input {
+  flex-grow: 1;
+  border: none;
+  font-size: 20px;
+  font-weight: bold;
+  padding: 8px;
+  outline: none;
+}
+
+.content-textarea {
+  flex-grow: 1;
+  border: none;
+  padding: 16px;
+  font-size: 16px;
+  line-height: 1.6;
+  font-family: inherit;
+  resize: none;
+  outline: none;
+}
+
+/* Resource Hub Styling */
+.resource-category {
+  margin-bottom: 24px;
+}
+
+.category-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #4a5568;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 12px;
+  padding-bottom: 4px;
+  border-bottom: 2px solid #e2e8f0;
+}
+
+.resource-item {
+  display: flex;
+  align-items: center;
+  background-color: #fff;
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 12px;
+  text-decoration: none;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+}
+
+.resource-item:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0,0,0,0.08);
+}
+
+.resource-icon-container {
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background-color: #eef2ff;
+  color: #4338ca;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 16px;
+}
+
+.resource-details {
+  flex-grow: 1;
+}
+
+.resource-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #1e293b;
+  margin: 0 0 4px 0;
+}
+
+.resource-description {
+  font-size: 14px;
+  color: #64748b;
+  margin: 0;
+}
+
+/* Attendance Tracker Styling */
+.attendance-card {
+  background-color: #fff;
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 16px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+}
+
+.course-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.course-name-attendance {
+  font-weight: 600;
+  font-size: 16px;
+  color: #2d3748;
+}
+
+.attendance-stats {
+  font-weight: 500;
+  font-size: 14px;
+  color: #4a5568;
+}
+
+.progress-bar-container {
+  background-color: #e2e8f0;
+  border-radius: 8px;
+  height: 16px;
+  overflow: hidden;
+  margin-bottom: 16px;
+}
+
+.progress-bar {
+  height: 100%;
+  border-radius: 8px;
+  transition: width 0.3s ease-in-out;
+}
+
+.progress-bar.green { background-color: #48bb78; }
+.progress-bar.orange { background-color: #ed8936; }
+.progress-bar.red { background-color: #f56565; }
+
+.action-buttons {
+  display: flex;
+  gap: 12px;
+}
+
+.action-buttons button {
+  flex: 1;
+  padding: 12px;
+  border-radius: 8px;
+  border: none;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.attend-button {
+  background-color: #c6f6d5;
+  color: #2f855a;
+}
+
+.miss-button {
+  background-color: #fed7d7;
+  color: #c53030;
+}
+
+/* Attendance Card Header & Undo Button Styling */
+.card-header-flex {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.undo-button {
+  background: none;
+  border: 1px solid #cbd5e0;
+  color: #4a5568;
+  border-radius: 16px;
+  padding: 4px 10px;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+}
+
+.attendance-percentage {
+    font-weight: bold;
+    font-size: 18px;
+    color: #1e293b;
+}
+
+/* Styling for the SweetAlert2 confirmation dialog */
+.swal2-popup {
+  border-radius: 12px !important;
+  font-family: inherit !important;
+}
+.swal2-title {
+    color: #2d3748 !important;
+}
+.swal2-confirm {
+    background-color: #007bff !important;
+    border-radius: 8px !important;
+}
+.swal2-cancel {
+    border-radius: 8px !important;
+}
