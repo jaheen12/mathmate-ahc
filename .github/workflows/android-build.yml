@@ -41,6 +41,7 @@ jobs:
       - name: Setup Capacitor and Sync Android Project
         run: |
           npm install @capacitor/core @capacitor/cli
+          npm install @capacitor/android  # THE FIX IS HERE
           npx cap init "MathMate AHC" "com.jaheen12.mathmateahc" --web-dir "dist"
           npx cap add android
           npx cap sync android
