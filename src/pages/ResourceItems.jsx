@@ -17,7 +17,6 @@ function ResourceItems() {
   const { currentUser } = useAuth();
 
   const fetchItems = async () => {
-    // ... (fetch logic remains the same)
     if (!categoryId || !chapterId) return;
     setIsLoading(true);
     try {
@@ -90,24 +89,25 @@ function ResourceItems() {
             <button className="page-action-button" onClick={() => handleOpenItemForm()}><Plus size={24} /></button>
         )}
       </div>
-
       {isLoading ? <p>Loading...</p> : (
-        <div>
+        <div className="list-container">
           {items.map((item) => (
             <div key={item.id} className="list-item-wrapper">
-                <a href={item.url} target="_blank" rel="noopener noreferrer" className="resource-item-link">
+              <div className="list-item" onClick={() => window.open(item.url, '_blank')}>
+                <div style={{display: 'flex', alignItems: 'center', gap: '16px'}}>
                     <div className="resource-icon-container"><LinkIcon /></div>
                     <div className="resource-details">
                         <p className="resource-title">{item.title}</p>
                         <p className="resource-description">{item.description}</p>
                     </div>
-                </a>
-                {currentUser && (
-                    <div className="list-item-actions">
-                        <button className="action-button edit-button" onClick={() => handleOpenItemForm(item)}><Pencil size={18} /></button>
-                        <button className="action-button delete-button" onClick={() => handleDeleteItem(item)}><Trash2 size={18} /></button>
-                    </div>
-                )}
+                </div>
+              </div>
+              {currentUser && (
+                <div className="list-item-actions">
+                    <button className="action-button edit-button" onClick={() => handleOpenItemForm(item)}><Pencil size={18} /></button>
+                    <button className="action-button delete-button" onClick={() => handleDeleteItem(item)}><Trash2 size={18} /></button>
+                </div>
+              )}
             </div>
           ))}
         </div>
@@ -115,4 +115,5 @@ function ResourceItems() {
     </div>
   );
 }
+
 export default ResourceItems;

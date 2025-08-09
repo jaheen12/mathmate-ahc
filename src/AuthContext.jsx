@@ -1,48 +1,47 @@
 // src/AuthContext.jsx
 import React, { createContext, useState, useEffect, useContext } from 'react';
-import { getAuth, onAuthStateChanged, signOut } from 'firebase/auth';
+// We no longer need getAuth here
+import { onAuthStateChanged, signOut } from 'firebase/auth';
+// We import the already initialized auth service
+import { auth } from './firebaseConfig'; 
 
 // 1. Create the context
 const AuthContext = createContext();
 
-// 2. Create a custom hook to easily use this context elsewhere
+// 2. Create a custom hook
 export const useAuth = () => {
   return useContext(AuthContext);
 };
 
-// 3. Create the Provider component that will wrap our entire app
+// 3. Create the Provider component
 export const AuthProvider = ({ children }) => {
   const [currentUser, setCurrentUser] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const auth = getAuth();
+  const [authLoading, setAuthLoading] = useState(true);
 
-  // This is the magic: Firebase's listener that automatically
-  // updates us whenever the user's login state changes.
   useEffect(() => {
+    // The onAuthStateChanged listener automatically handles cleanup
     const unsubscribe = onAuthStateChanged(auth, user => {
       setCurrentUser(user);
-      setLoading(false);
+      setAuthLoading(false);
     });
 
-    // Cleanup the listener when the component unmounts
-    return unsubscribe;
-  }, [auth]);
+    return unsubscribe; // This cleans up the listener
+  }, []); // The empty dependency array is correct here
 
   const handleLogout = () => {
     return signOut(auth);
   };
 
-  // The value provided to all children components
   const value = {
     currentUser,
-    auth,
+    authLoading,
     handleLogout,
   };
 
-  // We don't render the app until Firebase has checked the auth state
+  // We will not render the children until the first auth check is complete
   return (
     <AuthContext.Provider value={value}>
-      {!loading && children}
+      {!authLoading && children}
     </AuthContext.Provider>
   );
 };

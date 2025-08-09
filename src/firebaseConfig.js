@@ -1,10 +1,9 @@
 // src/firebaseConfig.js
-
 import { initializeApp } from "firebase/app";
-import { getAuth } from "firebase/auth"; // Import getAuth here
 import { getFirestore } from "firebase/firestore";
+import { getAuth } from "firebase/auth"; // Import getAuth here
 
-// ▼▼▼ PASTE YOUR FIREBASE CONFIG OBJECT HERE ▼▼▼
+// Your web app's Firebase configuration
 const firebaseConfig = {
   apiKey: "AIzaSyBafBv2UojhGRQjeiZoG4ES7O19jZ6OZvU",
   authDomain: "mathmate-ahc-app.firebaseapp.com",
@@ -14,13 +13,11 @@ const firebaseConfig = {
   appId: "1:324907269101:web:5ec3feb735f86320ad05e4",
   measurementId: "G-5B8XW73ZT4"
 };
-// ▲▲▲ END OF PASTE ▲▲▲
 
-// Initialize Firebase
+// Initialize Firebase App
 const app = initializeApp(firebaseConfig);
 
-// Initialize Firebase services and export them
+// Initialize services ONCE and export them
 export const db = getFirestore(app);
-export const auth = getAuth(app); // Initialize Auth and export it
-
+export const auth = getAuth(app);
 
