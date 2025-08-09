@@ -21,42 +21,22 @@ jobs:
         uses: actions/setup-java@v4
         with:
           distribution: 'zulu'
-          java-version: '17' # Sticking with 17, as 21 was not the root cause
+          java-version: '17'
       
-      - name: Install Web Dependencies
+      - name: Install All Dependencies
         run: npm install
 
       - name: Build Web App
         run: npm run build
 
-      - name: Setup Capacitor and Sync Android Project
-        run: |
-          npm install @capacitor/core @capacitor/cli
-          npm install @capacitor/android@latest # Use the latest version
-          npx cap init "MathMate AHC" "com.jaheen12.mathmateahc" --web-dir "dist"
-          npx cap add android
-          npx cap sync android
-      
-      # --- THIS STEP IS UPDATED TO ENFORCE STABLE VERSIONS ---
-      - name: Configure Gradle for Stable Build
-        run: |
-          echo "ext {" > android/variables.gradle
-          echo "    minSdkVersion = 24" >> android/variables.gradle
-          echo "    compileSdkVersion = 34" >> android/variables.gradle
-          echo "    targetSdkVersion = 34" >> android/variables.gradle
-          echo "    androidxActivityVersion = '1.8.0'" >> android/variables.gradle
-          echo "    androidxAppCompatVersion = '1.6.1'" >> android/variables.gradle
-          echo "    androidxCoordinatorLayoutVersion = '1.2.0'" >> android/variables.gradle
-          echo "    androidxCoreVersion = '1.12.0'" >> android/variables.gradle
-          echo "    androidxSplashScreenVersion = '1.0.1'" >> android/variables.gradle
-          echo "    coreSplashScreenVersion = '1.0.0'" >> android/variables.gradle
-          echo "    androidxFragmentVersion = '1.6.2'" >> android/variables.gradle
-          echo "    junitVersion = '4.13.2'" >> android/variables.gradle
-          echo "    androidxJunitVersion = '1.1.5'" >> android/variables.gradle
-          echo "    androidxEspressoCoreVersion = '3.5.1'" >> android/variables.gradle
-          echo "    cordovaAndroidVersion = '12.0.0'" >> android/variables.gradle
-          echo "    javaVersion = '17'" >> android/variables.gradle
-          echo "}" >> android/variables.gradle
+      - name: Initialize Capacitor
+        run: npx cap init "MathMate AHC" "com.jaheen12.mathmateahc" --web-dir "dist"
+
+      - name: Add Android Platform
+        run: npx cap add android
+
+      - name: Sync Web Assets
+        run: npx cap sync android
           
       - name: Build Debug APK
         run: |
