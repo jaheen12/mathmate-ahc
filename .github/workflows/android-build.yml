@@ -37,33 +37,31 @@ jobs:
           npx cap add android
           npx cap sync android
       
-      # --- NEW STEP TO FIX JAVA VERSION ---
+      # --- THIS STEP IS NOW CORRECTED ---
       - name: Configure Gradle for Java 17 Compatibility
         run: |
-          echo "minSdkVersion = 22" > android/variables.gradle
-          echo "compileSdkVersion = 34" >> android/variables.gradle
-          echo "targetSdkVersion = 34" >> android/variables.gradle
-          echo "androidxActivityVersion = '1.8.0'" >> android/variables.gradle
-          echo "androidxAppCompatVersion = '1.6.1'" >> android/variables.gradle
-          echo "androidxCoordinatorLayoutVersion = '1.2.0'" >> android/variables.gradle
-          echo "androidxCoreVersion = '1.12.0'" >> android/variables.gradle
-          echo "androidxFragmentVersion = '1.6.2'" >> android/variables.gradle
-          echo "junitVersion = '4.13.2'" >> android/variables.gradle
-          echo "androidxJunitVersion = '1.1.5'" >> android/variables.gradle
-          echo "androidxEspressoCoreVersion = '3.5.1'" >> android/variables.gradle
-          echo "cordovaAndroidVersion = '12.0.0'" >> android/variables.gradle
-          # This is the most important line for the fix
-          echo "javaVersion = '17'" >> android/variables.gradle
+          echo "ext {" > android/variables.gradle
+          echo "    minSdkVersion = 22" >> android/variables.gradle
+          echo "    compileSdkVersion = 34" >> android/variables.gradle
+          echo "    targetSdkVersion = 34" >> android/variables.gradle
+          echo "    androidxActivityVersion = '1.8.0'" >> android/variables.gradle
+          echo "    androidxAppCompatVersion = '1.6.1'" >> android/variables.gradle
+          echo "    androidxCoordinatorLayoutVersion = '1.2.0'" >> android/variables.gradle
+          echo "    androidxCoreVersion = '1.12.0'" >> android/variables.gradle
+          echo "    androidxFragmentVersion = '1.6.2'" >> android/variables.gradle
+          echo "    junitVersion = '4.13.2'" >> android/variables.gradle
+          echo "    androidxJunitVersion = '1.1.5'" >> android/variables.gradle
+          echo "    androidxEspressoCoreVersion = '3.5.1'" >> android/variables.gradle
+          echo "    cordovaAndroidVersion = '12.0.0'" >> android/variables.gradle
+          echo "    javaVersion = '17'" >> android/variables.gradle
+          echo "}" >> android/variables.gradle
           
-      # Step 8: Build the APK
       - name: Build Debug APK
         run: |
           cd android
-          # Give gradlew execute permissions
           chmod +x ./gradlew
           ./gradlew assembleDebug
 
-      # Step 9: Upload the finished APK
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
