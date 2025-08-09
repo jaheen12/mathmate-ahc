@@ -7,6 +7,22 @@ export const schedule = {
   thu: [ { time: '9:45-10:30', name: 'Calculus', topic: 'Function & their graph', teacher: 'Mizanur Rahman (MR)' }, { time: '10:30-11:15', name: 'Fundamentals of Math', topic: 'Complex Number', teacher: 'Fokhrol Islam (FI)' }, { time: '11:15-12:00', name: 'Fundamentals of Math', topic: 'Real Number System', teacher: 'Nirmal Chandra Paul (NP)' }, { time: '12:00-12:45', name: 'Upcoming', topic: '', teacher: '' } ],
 };
 
+// ... after the schedule object ...
+
+export const courses = [
+  'Fundamentals of Mathematics (223701)',
+  'Analytic & Vector Geometry (223703)',
+  'Calculus-II (223705)',
+  'Linear Algebra (223709)',
+  'Physics-II (222707)',
+  'Statistics (NM)'
+];
+
+// ... the resources object is below this ...
+
+
+
+
 export const resources = {
   'calculus': {
     name: 'Calculus',

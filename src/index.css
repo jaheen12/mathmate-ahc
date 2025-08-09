@@ -920,3 +920,62 @@ Note: You also need a wrapper div structure in your app.jsx page structure
     display: flex;
     gap: 8px;
 }
+
+/* --- Intelligent Schedule Styling --- */
+
+/* Column Highlighting */
+.day-column.current-day {
+  background-color: #ebf8ff; /* Light blue */
+  border: 1px solid #90cdf4;
+}
+.day-column.next-day {
+  background-color: #f0fff4; /* Light green */
+  border: 1px solid #9ae6b4;
+}
+
+/* Current Class Highlighting */
+.class-card.current-class {
+  border: 2px solid #3182ce;
+  box-shadow: 0 4px 12px rgba(49, 130, 206, 0.3);
+}
+
+/* Status Tag Styling */
+.status-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+.status-tag.status-canceled {
+  background-color: #fed7d7;
+  color: #c53030;
+}
+.status-tag.status-exam {
+  background-color: #feebc8;
+  color: #c05621;
+}
+.status-tag.status-extra-class {
+  background-color: #c6f6d5;
+  color: #2f855a;
+}
+.canceled-text {
+  text-decoration: line-through;
+  opacity: 0.7;
+}
+
+/* Reminder Indicator Styling */
+.reminder-indicator {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 10px;
+  padding: 6px;
+  background-color: #fffaf0; /* Light yellow */
+  border-radius: 4px;
+  font-size: 12px;
+  color: #c05621;
+}
