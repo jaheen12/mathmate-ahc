@@ -17,12 +17,11 @@ jobs:
         with:
           node-version: '18'
 
-      # --- THE FIX IS HERE: Changed java-version to '21' ---
       - name: Set up Java JDK
         uses: actions/setup-java@v4
         with:
           distribution: 'zulu'
-          java-version: '21'
+          java-version: '17' # Sticking with 17, as 21 was not the root cause
       
       - name: Install Web Dependencies
         run: npm install
@@ -33,13 +32,13 @@ jobs:
       - name: Setup Capacitor and Sync Android Project
         run: |
           npm install @capacitor/core @capacitor/cli
-          npm install @capacitor/android
+          npm install @capacitor/android@latest # Use the latest version
           npx cap init "MathMate AHC" "com.jaheen12.mathmateahc" --web-dir "dist"
           npx cap add android
           npx cap sync android
       
-      # We still need this file for the other properties
-      - name: Configure Gradle Variables
+      # --- THIS STEP IS UPDATED TO ENFORCE STABLE VERSIONS ---
+      - name: Configure Gradle for Stable Build
         run: |
           echo "ext {" > android/variables.gradle
           echo "    minSdkVersion = 24" >> android/variables.gradle
@@ -50,12 +49,13 @@ jobs:
           echo "    androidxCoordinatorLayoutVersion = '1.2.0'" >> android/variables.gradle
           echo "    androidxCoreVersion = '1.12.0'" >> android/variables.gradle
           echo "    androidxSplashScreenVersion = '1.0.1'" >> android/variables.gradle
-          echo "    coreSplashScreenVersion = '1.0.0-rc01'" >> android/variables.gradle
+          echo "    coreSplashScreenVersion = '1.0.0'" >> android/variables.gradle
           echo "    androidxFragmentVersion = '1.6.2'" >> android/variables.gradle
           echo "    junitVersion = '4.13.2'" >> android/variables.gradle
           echo "    androidxJunitVersion = '1.1.5'" >> android/variables.gradle
           echo "    androidxEspressoCoreVersion = '3.5.1'" >> android/variables.gradle
           echo "    cordovaAndroidVersion = '12.0.0'" >> android/variables.gradle
+          echo "    javaVersion = '17'" >> android/variables.gradle
           echo "}" >> android/variables.gradle
           
       - name: Build Debug APK
