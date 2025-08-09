@@ -1,8 +1,9 @@
+// src/components/NoteEditor.jsx
 import React from 'react';
 import { ArrowLeft, Save } from 'lucide-react';
 
-// This component is the editor for a single note
 function NoteEditor({ note, onSave, onBack }) {
+  // We use React.useState to manage the title and content
   const [title, setTitle] = React.useState(note.title);
   const [content, setContent] = React.useState(note.content);
 
@@ -13,7 +14,9 @@ function NoteEditor({ note, onSave, onBack }) {
   return (
     <div className="note-editor-container">
       <div className="note-editor-header">
-        <button className="back-button" onClick={onBack}><ArrowLeft size={24} /></button>
+        <button className="back-button" onClick={onBack}>
+          <ArrowLeft size={24} />
+        </button>
         <input
           type="text"
           className="title-input"
@@ -21,7 +24,7 @@ function NoteEditor({ note, onSave, onBack }) {
           onChange={(e) => setTitle(e.target.value)}
           placeholder="Note Title"
         />
-        <button className="save-button" onClick={handleSave}><Save size={24} /></button>
+        {/* The old save button is now removed from here */}
       </div>
       <textarea
         className="content-textarea"
@@ -29,6 +32,12 @@ function NoteEditor({ note, onSave, onBack }) {
         onChange={(e) => setContent(e.target.value)}
         placeholder="Start writing your note here..."
       />
+      
+      {/* THE FIX: A new, prominent "Save Note" button at the bottom */}
+      <button className="fab-button save-fab" onClick={handleSave}>
+        <Save size={24} />
+        Save Note
+      </button>
     </div>
   );
 }
