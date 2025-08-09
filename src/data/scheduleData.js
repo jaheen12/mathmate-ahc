@@ -1,5 +1,5 @@
 // src/data/scheduleData.js
-// This data is generated from the FINAL class schedule image provided.
+// FINAL version based directly on the provided image.
 
 export const scheduleData = {
   sun: [

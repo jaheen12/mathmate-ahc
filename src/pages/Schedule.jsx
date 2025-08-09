@@ -1,32 +1,51 @@
-import React from 'react';
-import ScheduleView from '../components/ScheduleView'; // Import our new component
+import React, { useState, useEffect } from 'react';
+import ScheduleView from '../components/ScheduleView';
+import { db } from '../firebaseConfig'; // Import your db connection
+import { collection, getDocs } from 'firebase/firestore';
 
 function Schedule() {
-  // --- EDIT THIS DATA TO MATCH YOUR REAL SCHEDULE ---
-  const scheduleData = {
-    sun: [
-      { time: '9:00 AM', name: 'Linear Algebra', teacher: 'Dr. Rahman' },
-      { time: '11:15 AM', name: 'Calculus II', teacher: 'Mrs. Sultana' },
-    ],
-    mon: [
-      { time: '10:00 AM', name: 'Physics II', teacher: 'Mr. Khan' },
-      { time: '12:30 PM', name: 'Linear Algebra', teacher: 'Dr. Rahman' },
-    ],
-    tue: [
-      { time: '9:00 AM', name: 'Calculus II', teacher: 'Mrs. Sultana' },
-    ],
-    wed: [
-      { time: '10:00 AM', name: 'Physics II', teacher: 'Mr. Khan' },
-      { time: '1:30 PM', name: 'Physics Lab', teacher: 'Lab Assistant' },
-    ],
-    thu: [], // Example of a day with no classes
-  };
-  // ----------------------------------------------------
+  const [scheduleData, setScheduleData] = useState({});
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchSchedule = async () => {
+      // Set loading to true every time we fetch
+      setIsLoading(true);
+      try {
+        const scheduleCollectionRef = collection(db, 'schedule');
+        const scheduleSnapshot = await getDocs(scheduleCollectionRef);
+        
+        if (!scheduleSnapshot.empty) {
+          // Get the very first document, regardless of its ID
+          const scheduleDoc = scheduleSnapshot.docs[0].data();
+          
+          // --- THIS IS THE DEBUGGING LINE ---
+          // It will print the data your app is receiving to the developer console.
+          
+          // ------------------------------------
+
+          setScheduleData(scheduleDoc);
+        } else {
+          // This will log if the 'schedule' collection is empty in your database
+          console.log("No schedule document found in Firestore!");
+        }
+      } catch (error) {
+        // This will log if there is a permission error or network problem
+        console.error("Error fetching schedule from Firebase: ", error);
+      } finally {
+        // Set loading to false once we are done, successful or not
+        setIsLoading(false);
+      }
+    };
+
+    fetchSchedule();
+  }, []); // The empty array [] means this useEffect runs only once when the page loads.
 
   return (
     <div className="page-container">
       <h1 className="page-title">Class Schedule</h1>
-      <ScheduleView scheduleData={scheduleData} />
+      {/* Show a loading message while fetching data */}
+      {isLoading ? <p>Loading schedule from cloud...</p> : <ScheduleView scheduleData={scheduleData} />}
     </div>
   );
 }

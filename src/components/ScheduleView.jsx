@@ -1,21 +1,24 @@
 // src/components/ScheduleView.jsx
-
 import React from 'react';
 
-// This component now displays the 'topic' as well
 function DayColumn({ day, classes }) {
+  // A helper to check if a class card has any real content
+  const hasContent = (classInfo) => classInfo.name || classInfo.topic || classInfo.teacher;
+
   return (
     <div className="day-column">
       <div className="day-header">{day}</div>
-      {classes.length > 0 ? (
+      {classes && classes.length > 0 ? (
         classes.map((classInfo, index) => (
-          <div key={index} className="class-card">
-            <p className="class-time">{classInfo.time}</p>
-            <p className="class-name">{classInfo.name}</p>
-            {/* We only show the topic if it exists */}
-            {classInfo.topic && <p className="class-topic">{classInfo.topic}</p>}
-            <p className="class-teacher">{classInfo.teacher}</p>
-          </div>
+          // Only render a card if it has content
+          hasContent(classInfo) ? (
+            <div key={index} className="class-card">
+              {classInfo.time && <p className="class-time">{classInfo.time}</p>}
+              {classInfo.name && <p className="class-name">{classInfo.name}</p>}
+              {classInfo.topic && <p className="class-topic">{classInfo.topic}</p>}
+              {classInfo.teacher && <p className="class-teacher">{classInfo.teacher}</p>}
+            </div>
+          ) : null // Don't render a card for empty slots
         ))
       ) : (
         <div className="no-class-card">
@@ -27,13 +30,17 @@ function DayColumn({ day, classes }) {
 }
 
 function ScheduleView({ scheduleData }) {
-  // We use Object.keys to handle the days present in your data
-  const days = Object.keys(scheduleData);
+  // Use a fixed order for the days of the week
+  const daysOfWeek = ['sun', 'mon', 'tue', 'wed', 'thu'];
 
   return (
     <div className="schedule-grid">
-      {days.map(day => (
-        <DayColumn key={day} day={day.charAt(0).toUpperCase() + day.slice(1)} classes={scheduleData[day] || []} />
+      {daysOfWeek.map(day => (
+        <DayColumn 
+          key={day} 
+          day={day.charAt(0).toUpperCase() + day.slice(1)} 
+          classes={scheduleData[day]} 
+        />
       ))}
     </div>
   );
