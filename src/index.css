@@ -616,3 +616,307 @@ Note: You also need a wrapper div structure in your app.jsx page structure
   font-weight: bold;
   cursor: pointer;
 }
+
+/* Notice Board Styling */
+.notice-card {
+  background-color: #fff;
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 16px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+  border-left: 5px solid #3182ce; /* Blue for regular notices */
+}
+
+.notice-card.important {
+  border-left-color: #e53e3e; /* Red for important notices */
+  background-color: #fff5f5;
+}
+
+.notice-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 8px;
+}
+
+.notice-title-container {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.notice-title {
+  font-size: 18px;
+  font-weight: 600;
+  margin: 0;
+  color: #2d3748;
+}
+
+.notice-icon {
+  color: #3182ce;
+}
+.notice-card.important .notice-icon {
+    color: #e53e3e;
+}
+
+.notice-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.notice-date {
+  font-size: 12px;
+  color: #718096;
+  margin: 0 0 12px 0;
+}
+
+.notice-content {
+  font-size: 15px;
+  line-height: 1.6;
+  color: #4a5568;
+  white-space: pre-wrap; /* This respects line breaks in the text */
+}
+
+/* Modal form for adding/editing notices */
+.swal2-textarea {
+    height: 150px !important;
+}
+
+/* Resource Hub Admin Actions Styling */
+.resource-item-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.resource-item {
+  flex-grow: 1; /* Make the main link take up available space */
+}
+
+.resource-actions {
+  display: flex;
+  gap: 8px;
+}
+
+/* Resource Hub Category Management Styling */
+.category-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  /* Re-style the category title to be part of the header */
+  font-size: 16px;
+  font-weight: 600;
+  color: #4a5568;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 12px;
+  padding-bottom: 4px;
+  border-bottom: 2px solid #e2e8f0;
+}
+
+.category-title {
+  /* Remove old styles that are now on the header */
+  border-bottom: none;
+  margin-bottom: 0;
+  padding-bottom: 0;
+}
+
+.category-actions {
+  display: flex;
+  gap: 8px;
+}
+
+/* --- Expandable FAB (Speed Dial) Styling --- */
+.fab-speed-dial-container {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  z-index: 1001;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
+
+.main-fab {
+  /* This reuses our existing .fab-button style */
+  /* We can add a transition for the rotation */
+  transition: transform 0.3s ease-in-out;
+}
+
+.fab-options {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 16px;
+  margin-bottom: 16px;
+  /* Hide the options by default */
+  max-height: 0;
+  opacity: 0;
+  overflow: hidden;
+  transition: max-height 0.3s ease-in-out, opacity 0.3s ease-in-out;
+}
+
+.fab-options.open {
+  /* Show the options when the 'open' class is added */
+  max-height: 200px; /* Adjust if you have more options */
+  opacity: 1;
+}
+
+.fab-option {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+}
+
+.fab-option span {
+  background-color: #fff;
+  padding: 4px 8px;
+  border-radius: 4px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  font-size: 14px;
+  font-weight: 500;
+  color: #333;
+}
+
+.mini-fab {
+  /* This reuses .fab-button styles but makes it smaller */
+  width: 48px;
+  height: 48px;
+  padding: 0;
+  font-size: 14px;
+  background-color: #f8f9fa;
+  color: #495057;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.15);
+}
+
+/* --- Page Header Action Menu Styling --- */
+.page-header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  /* We remove the bottom margin from the title when it's in a row */
+  margin-bottom: 24px;
+}
+
+.page-header-row .page-title {
+  margin-bottom: 0;
+}
+
+.page-action-menu-container {
+  position: relative; /* Anchor for the dropdown */
+}
+
+.page-action-button {
+  background: none;
+  border: none;
+  color: #2d3748;
+  padding: 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+}
+
+.page-action-menu {
+  position: absolute;
+  top: 110%; /* Position it just below the button */
+  right: 0;
+  background-color: white;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  overflow: hidden;
+  z-index: 1200;
+  opacity: 0;
+  transform: translateY(-10px);
+  visibility: hidden;
+  transition: all 0.2s ease;
+}
+
+.page-action-menu.open {
+  opacity: 1;
+  transform: translateY(0);
+  visibility: visible;
+}
+
+.page-action-menu .menu-item {
+  padding: 12px 16px;
+  color: #333;
+  font-size: 16px;
+  white-space: nowrap;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.page-action-menu .menu-item:hover {
+  background-color: #f0f2f5;
+}
+
+/* --- Hierarchical List Styling --- */
+.list-container {
+  background-color: #fff;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+}
+
+.list-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px;
+  border-bottom: 1px solid #e2e8f0;
+  text-decoration: none;
+  color: #2d3748;
+  font-size: 16px;
+}
+.list-item:last-child {
+  border-bottom: none;
+}
+.list-item:hover {
+  background-color: #f7fafc;
+}
+
+.back-button-page {
+  background: none;
+  border: none;
+  padding: 8px;
+  margin-right: 8px;
+  cursor: pointer;
+}
+.page-header-row .page-title {
+    flex-grow: 1;
+}
+
+/* Reusing resource item style for the final page */
+.resource-item-link {
+  display: flex;
+  align-items: center;
+  background-color: #fff;
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 12px;
+  text-decoration: none;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+
+/* Styling for list items with actions */
+.list-item-wrapper {
+  display: flex;
+  align-items: center;
+  border-bottom: 1px solid #e2e8f0;
+}
+.list-item-wrapper:last-child {
+    border-bottom: none;
+}
+.list-item-wrapper .list-item {
+    flex-grow: 1;
+    border-bottom: none; /* Remove border from the link itself */
+}
+.list-item-wrapper .list-item-actions {
+    padding-right: 16px;
+    display: flex;
+    gap: 8px;
+}
