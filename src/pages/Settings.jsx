@@ -1,23 +1,45 @@
+// src/pages/Settings.jsx
 import React from 'react';
-import { Link } from 'react-router-dom'; // We'll use Link to navigate
-import { Cog } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { useAuth } from '../AuthContext'; // Import our custom hook
 
 function Settings() {
-  // In a real app, you'd have more settings here like theme toggle, etc.
+  const { currentUser, handleLogout } = useAuth(); // Get the current user and logout function
+
+  const onLogout = async () => {
+    try {
+      await handleLogout();
+      // You will be automatically redirected because of our listener
+    } catch (error) {
+      alert('Failed to log out.');
+    }
+  };
+
   return (
     <div className="page-container">
       <h1 className="page-title">Settings</h1>
       
       <div className="settings-section">
-        <p>App Version: 1.0.0</p>
-        {/* Add more settings options here later */}
+        {/* THE FIX: Show different content based on login state */}
+        {currentUser ? (
+          <div>
+            <p>You are logged in as Admin:</p>
+            <p><strong>{currentUser.email}</strong></p>
+            <button onClick={onLogout} className="logout-button">
+              Log Out
+            </button>
+          </div>
+        ) : (
+          <p>You are not logged in.</p>
+        )}
       </div>
 
-      {/* This is the hidden link to our admin panel */}
       <div className="admin-login-link-container">
-        <Link to="/admin-login" className="admin-login-link">
-          Admin Login
-        </Link>
+        {!currentUser && (
+          <Link to="/admin-login" className="admin-login-link">
+            Admin Login
+          </Link>
+        )}
       </div>
     </div>
   );

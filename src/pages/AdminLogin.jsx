@@ -1,23 +1,35 @@
+// src/pages/AdminLogin.jsx
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { getAuth, signInWithEmailAndPassword } from 'firebase/auth';
 
 function AdminLogin() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const navigate = useNavigate();
+  const auth = getAuth();
 
-  const handleLogin = (e) => {
-    e.preventDefault(); // Prevent form from reloading the page
-    setError(''); // Clear previous errors
+  // ... inside AdminLogin.jsx
 
-    // --- LOGIN LOGIC WILL GO HERE IN THE NEXT STEP ---
-    console.log('Attempting to log in with:', email, password);
+const handleLogin = async (e) => {
+  e.preventDefault();
+  setError('');
 
-    // For now, let's pretend login is successful and navigate back home
-    alert('Login functionality not yet implemented. Pretending to log in.');
-    navigate('/'); // Go back to the dashboard
-  };
+  try {
+    await signInWithEmailAndPassword(auth, email, password);
+    navigate('/'); 
+  } catch (error) {
+  console.error("Firebase login error:", error.code);
+  if (error.code === 'auth/invalid-credential' || error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
+    setError('Invalid email or password. Please try again.');
+  } else {
+    setError('An unexpected error occurred. Please try again later.');
+  }
+}
+};
+
+// ... rest of the file
 
   return (
     <div className="page-container">

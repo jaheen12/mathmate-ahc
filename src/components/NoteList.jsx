@@ -1,10 +1,9 @@
 import React from 'react';
 import { FileText, PlusCircle, Trash2, Pencil } from 'lucide-react';
 
-// THE FIX: We now accept onEdit and onDelete functions
+// This is the final, fully flexible version of the NoteList
 function NoteList({ notes, onSelectNote, onCreateNew, onEdit, onDelete, emptyMessage, showCreateButton }) {
   
-  // This function stops the row click from happening when a button is clicked
   const handleButtonClick = (e, callback) => {
     e.stopPropagation();
     callback();
@@ -18,21 +17,27 @@ function NoteList({ notes, onSelectNote, onCreateNew, onEdit, onDelete, emptyMes
             <FileText size={20} className="note-item-icon" />
             <span className="note-item-title">{note.title || 'Untitled Note'}</span>
             
-            {/* THE FIX: Management buttons are added here */}
-            <div className="note-item-actions">
-              <button 
-                className="action-button edit-button" 
-                onClick={(e) => handleButtonClick(e, () => onEdit(note.id))}
-              >
-                <Pencil size={18} />
-              </button>
-              <button 
-                className="action-button delete-button" 
-                onClick={(e) => handleButtonClick(e, () => onDelete(note.id))}
-              >
-                <Trash2 size={18} />
-              </button>
-            </div>
+            {/* THE FIX: We only show the action buttons if onEdit or onDelete functions exist */}
+            {(onEdit || onDelete) && (
+              <div className="note-item-actions">
+                {onEdit && (
+                  <button 
+                    className="action-button edit-button" 
+                    onClick={(e) => handleButtonClick(e, () => onEdit(note.id))}
+                  >
+                    <Pencil size={18} />
+                  </button>
+                )}
+                {onDelete && (
+                  <button 
+                    className="action-button delete-button" 
+                    onClick={(e) => handleButtonClick(e, () => onDelete(note.id))}
+                  >
+                    <Trash2 size={18} />
+                  </button>
+                )}
+              </div>
+            )}
           </div>
         ))
       ) : (
