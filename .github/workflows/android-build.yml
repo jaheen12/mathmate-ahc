@@ -37,7 +37,7 @@ jobs:
           npx cap add android
           npx cap sync android
       
-      # --- THIS STEP IS NOW CORRECTED ---
+      # --- THIS STEP IS NOW FULLY CORRECTED ---
       - name: Configure Gradle for Java 17 Compatibility
         run: |
           echo "ext {" > android/variables.gradle
@@ -48,6 +48,7 @@ jobs:
           echo "    androidxAppCompatVersion = '1.6.1'" >> android/variables.gradle
           echo "    androidxCoordinatorLayoutVersion = '1.2.0'" >> android/variables.gradle
           echo "    androidxCoreVersion = '1.12.0'" >> android/variables.gradle
+          echo "    androidxSplashScreenVersion = '1.0.1'" >> android/variables.gradle
           echo "    androidxFragmentVersion = '1.6.2'" >> android/variables.gradle
           echo "    junitVersion = '4.13.2'" >> android/variables.gradle
           echo "    androidxJunitVersion = '1.1.5'" >> android/variables.gradle
