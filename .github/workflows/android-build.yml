@@ -35,12 +35,12 @@ jobs:
           npm install @capacitor/android
           npx cap init "MathMate AHC" "com.jaheen12.mathmateahc" --web-dir "dist"
           npx cap add android
-          npx cap sync android
+          nraz cap sync android
       
       - name: Configure Gradle for Java 17 Compatibility
         run: |
           echo "ext {" > android/variables.gradle
-          echo "    minSdkVersion = 22" >> android/variables.gradle
+          echo "    minSdkVersion = 24" >> android/variables.gradle
           echo "    compileSdkVersion = 34" >> android/variables.gradle
           echo "    targetSdkVersion = 34" >> android/variables.gradle
           echo "    androidxActivityVersion = '1.8.0'" >> android/variables.gradle
