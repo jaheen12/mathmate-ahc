@@ -37,7 +37,6 @@ jobs:
           npx cap add android
           npx cap sync android
       
-      # --- THIS STEP IS NOW FULLY CORRECTED ---
       - name: Configure Gradle for Java 17 Compatibility
         run: |
           echo "ext {" > android/variables.gradle
