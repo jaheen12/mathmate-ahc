@@ -1,3 +1,5 @@
+// src/pages/Attendance.jsx
+
 import React, { useState, useEffect } from 'react';
 import AttendanceCard from '../components/AttendanceCard';
 import Swal from 'sweetalert2';
@@ -5,18 +7,31 @@ import withReactContent from 'sweetalert2-react-content';
 
 const MySwal = withReactContent(Swal);
 
+// --- UPDATED COURSE LIST BASED ON YOUR DECISION ---
 const YOUR_COURSES = [
-  'Linear Algebra', 'Calculus II', 'Physics II', 'Physics Lab', 'Statistics'
+  'Fundamentals of Mathematics (223701)',
+  'Analytic and Vector Geometry (223703)',
+  'Calculus-II (223705)',
+  'Linear Algebra (223709)',
+  'Physics-II (222707)'
 ];
+// --------------------------------------------------
 
 const getInitialAttendance = () => {
   const storedData = localStorage.getItem('mathmate-attendance');
   if (storedData) {
-    return JSON.parse(storedData);
+    // Make sure new courses are added if the app is updated
+    const parsedData = JSON.parse(storedData);
+    YOUR_COURSES.forEach(course => {
+      if (!parsedData[course]) {
+        parsedData[course] = { attended: 0, missed: 0, lastAction: null };
+      }
+    });
+    return parsedData;
   }
+  
   const defaultData = {};
   YOUR_COURSES.forEach(course => {
-    // The data structure now includes 'lastAction'
     defaultData[course] = { attended: 0, missed: 0, lastAction: null };
   });
   return defaultData;
@@ -55,7 +70,7 @@ function Attendance() {
           [courseName]: {
             ...prevData[courseName],
             attended: prevData[courseName].attended + 1,
-            lastAction: 'attended', // Track the last action
+            lastAction: 'attended',
           }
         }));
       }
@@ -72,7 +87,7 @@ function Attendance() {
           [courseName]: {
             ...prevData[courseName],
             missed: prevData[courseName].missed + 1,
-            lastAction: 'missed', // Track the last action
+            lastAction: 'missed',
           }
         }));
       }
@@ -81,7 +96,7 @@ function Attendance() {
 
   const handleUndo = (courseName) => {
     const lastAction = attendanceData[courseName].lastAction;
-    if (!lastAction) return; // Do nothing if there's nothing to undo
+    if (!lastAction) return;
 
     setAttendanceData(prevData => {
         const newData = { ...prevData };
@@ -90,7 +105,6 @@ function Attendance() {
         } else if (lastAction === 'missed') {
             newData[courseName].missed -= 1;
         }
-        // Clear the last action so undo can only be used once
         newData[courseName].lastAction = null; 
         return newData;
     });
@@ -107,7 +121,7 @@ function Attendance() {
           stats={attendanceData[courseName]}
           onAttend={handleAttend}
           onMiss={handleMiss}
-          onUndo={handleUndo} // Pass the new undo handler
+          onUndo={handleUndo}
         />
       ))}
     </div>

@@ -420,3 +420,13 @@ body {
 .swal2-cancel {
     border-radius: 8px !important;
 }
+
+/* Style for the topic in schedule card */
+.class-topic {
+  font-size: 13px;
+  font-style: italic;
+  color: #4a5568;
+  margin: 4px 0;
+  padding-left: 8px;
+  border-left: 2px solid #a0aec0;
+}
