@@ -35,7 +35,7 @@ jobs:
           npm install @capacitor/android
           npx cap init "MathMate AHC" "com.jaheen12.mathmateahc" --web-dir "dist"
           npx cap add android
-          nraz cap sync android
+          npx cap sync android
       
       - name: Configure Gradle for Java 17 Compatibility
         run: |
