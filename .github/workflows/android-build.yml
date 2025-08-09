@@ -1,0 +1,59 @@
+# This is the name of your automated workflow
+name: Build Android APK
+
+# This tells GitHub to run the script every time you push code to the 'main' branch
+on:
+  push:
+    branches: [ "main" ]
+
+jobs:
+  build:
+    # Use a standard Linux virtual machine for the build process
+    runs-on: ubuntu-latest
+
+    steps:
+      # Step 1: Checks out a copy of your repository code onto the virtual machine
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      # Step 2: Sets up the Node.js environment (needed to build your web app)
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      # Step 3: Sets up the Java environment (needed to build an Android app)
+      - name: Set up Java JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+      
+      # Step 4: Installs all your web app's dependencies (React, etc.)
+      - name: Install Web Dependencies
+        run: npm install
+
+      # Step 5: Builds the optimized web app files and puts them in the 'dist' folder
+      - name: Build Web App
+        run: npm run build
+
+      # Step 6: Installs Capacitor and prepares the native Android project
+      - name: Setup Capacitor and Sync Android Project
+        run: |
+          npm install @capacitor/core @capacitor/cli
+          npx cap init "MathMate AHC" "com.jaheen12.mathmateahc" --web-dir "dist"
+          npx cap add android
+          npx cap sync android
+      
+      # Step 7: Navigates into the 'android' folder and runs the build command to create the APK
+      - name: Build Debug APK
+        run: |
+          cd android
+          ./gradlew assembleDebug
+
+      # Step 8: Takes the finished APK and uploads it so you can download it
+      - name: Upload APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-debug-apk
+          path: android/app/build/outputs/apk/debug/app-debug.apk
