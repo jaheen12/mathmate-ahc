@@ -52,7 +52,6 @@ function Attendance() {
 
   // Save to local storage whenever attendanceData changes
   useEffect(() => {
-    // Only save if there is data to prevent overwriting on initial load
     if (Object.keys(attendanceData).length > 0) {
       localStorage.setItem('mathmate-attendance', JSON.stringify(attendanceData));
     }
@@ -69,7 +68,6 @@ function Attendance() {
       showCancelButton: true,
       preConfirm: () => {
         const textarea = document.getElementById('swal-courses');
-        // Split by new line, trim whitespace, and remove any empty lines
         return textarea.value.split('\n').map(line => line.trim()).filter(line => line);
       }
     }).then(async (result) => {
@@ -79,7 +77,7 @@ function Attendance() {
           const coursesRef = doc(db, 'courses', 'main-list');
           await updateDoc(coursesRef, { list: newList });
           Swal.fire('Success!', 'The course list has been updated.', 'success');
-          fetchCourseList(); // Refresh the list
+          fetchCourseList();
         } catch (error) {
           Swal.fire('Error!', 'Could not update the list: ' + error.message, 'error');
         }
@@ -87,12 +85,57 @@ function Attendance() {
     });
   };
 
-  // --- Attendance marking logic (handleAttend, handleMiss, handleUndo) remains the same ---
-  const showConfirmation = (title, text, action) => { MySwal.fire({ title, text, icon: 'question', showCancelButton: true, confirmButtonText: 'Yes, mark it!', cancelButtonText: 'No, cancel' }).then(result => { if (result.isConfirmed) { action(); Swal.fire('Marked!', 'Your attendance has been updated.', 'success'); } }); };
-  const handleAttend = (courseName) => { showConfirmation('Mark as Attended?', `Are you sure for ${courseName}?`, () => { setAttendanceData(prevData => ({ ...prevData, [courseName]: { ...prevData[courseName], attended: prevData[courseName].attended + 1, lastAction: 'attended' } })); }); };
-  const handleMiss = (courseName) => { showConfirmation('Mark as Missed?', `Are you sure you missed ${courseName}?`, () => { setAttendanceData(prevData => ({ ...prevData, [courseName]: { ...prevData[courseName], missed: prevData[courseName].missed + 1, lastAction: 'missed' } })); }); };
-  const handleUndo = (courseName) => { const lastAction = attendanceData[courseName]?.lastAction; if (!lastAction) return; setAttendanceData(prevData => { const newData = { ...prevData }; if (lastAction === 'attended') { newData[courseName].attended -= 1; } else if (lastAction === 'missed') { newData[courseName].missed -= 1; } newData[courseName].lastAction = null; return newData; }); Swal.fire('Undone!', 'The last action has been reversed.', 'info'); };
-  // --- End of attendance logic ---
+  const showConfirmation = (title, text, action) => {
+    MySwal.fire({
+      title, text, icon: 'question', showCancelButton: true,
+      confirmButtonText: 'Yes, mark it!', cancelButtonText: 'No, cancel',
+    }).then(result => {
+      if (result.isConfirmed) {
+        action();
+        Swal.fire('Marked!', 'Your attendance has been updated.', 'success');
+      }
+    });
+  };
+  
+  const handleAttend = (courseName) => {
+    showConfirmation('Mark as Attended?', `Are you sure for ${courseName}?`, () => {
+      setAttendanceData(prevData => ({ ...prevData, [courseName]: { ...prevData[courseName], attended: prevData[courseName].attended + 1, lastAction: 'attended' } }));
+    });
+  };
+
+  const handleMiss = (courseName) => {
+    showConfirmation('Mark as Missed?', `Are you sure you missed ${courseName}?`, () => {
+      setAttendanceData(prevData => ({ ...prevData, [courseName]: { ...prevData[courseName], missed: prevData[courseName].missed + 1, lastAction: 'missed' } }));
+    });
+  };
+
+  // --- THIS IS THE CORRECTED UNDO FUNCTION ---
+  const handleUndo = (courseName) => {
+    setAttendanceData(currentData => {
+      const lastAction = currentData[courseName]?.lastAction;
+
+      if (!lastAction) {
+        return currentData; // Return state unchanged if no action to undo
+      }
+
+      const newData = { ...currentData };
+      const courseData = { ...newData[courseName] };
+
+      if (lastAction === 'attended') {
+        courseData.attended -= 1;
+      } else if (lastAction === 'missed') {
+        courseData.missed -= 1;
+      }
+      
+      courseData.lastAction = null; // Clear the last action
+      newData[courseName] = courseData;
+
+      return newData;
+    });
+
+    Swal.fire('Undone!', 'The last action has been reversed.', 'info');
+  };
+  // ---------------------------------------------
 
   return (
     <div className="page-container">
@@ -112,7 +155,7 @@ function Attendance() {
             <AttendanceCard
               key={courseName}
               courseName={courseName}
-              stats={attendanceData[courseName] || { attended: 0, missed: 0 }}
+              stats={attendanceData[courseName] || { attended: 0, missed: 0, lastAction: null }}
               onAttend={handleAttend}
               onMiss={handleMiss}
               onUndo={handleUndo}

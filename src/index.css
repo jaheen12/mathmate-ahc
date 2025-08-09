@@ -1,158 +1,74 @@
 /* --- Basic Reset and Global Styles --- */
-body {
-  margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-    sans-serif;
-  background-color: #f8f9fa;
-  color: #212529;
-}
+body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif; background-color: #f8f9fa; color: #212529; }
 
 /* --- App Layout and Burger Menu --- */
-.bm-burger-button { display: none; }
-.bm-cross-button { height: 24px; width: 24px; }
-.bm-cross { background: #bdc3c7; }
-.bm-menu-wrap { position: fixed; height: 100%; z-index: 1100 !important; }
-.bm-menu { background: #2c3e50; padding: 2.5em 1.5em 0; font-size: 1.15em; }
-.bm-morph-shape { fill: #373a47; }
-.bm-item-list { color: #b8b7ad; padding: 0.8em; }
-.bm-item { display: inline-block; outline: none; }
-.bm-overlay { background: rgba(0, 0, 0, 0.3); position: fixed; top: 0; left: 0; width: 100%; height: 100%; }
-.sidebar-title { color: #fff; margin-bottom: 2em; font-size: 1.5em; font-weight: bold; }
-.menu-item { display: flex; align-items: center; color: #ecf0f1; padding: 1em 0; text-decoration: none; font-size: 18px; }
-.menu-item:hover { color: #ffffff; }
-.menu-icon { margin-right: 16px; }
-.sidebar-divider { border-color: #34495e; margin: 1em 0; }
-.settings-link { margin-top: 1em; }
-.app-header { display: flex; align-items: center; background-color: #ffffff; color: #1a202c; padding: 10px 16px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); position: sticky; top: 0; z-index: 900; }
-.menu-button { background: none; border: none; color: #2d3748; padding: 8px; margin-right: 16px; cursor: pointer; }
-.header-title { font-size: 20px; margin: 0; }
-.page-container { padding: 16px; }
-.page-title { font-size: 28px; font-weight: 700; color: #1a202c; margin-bottom: 24px; }
+.bm-burger-button { display: none; } .bm-cross-button { height: 24px; width: 24px; } .bm-cross { background: #bdc3c7; } .bm-menu-wrap { position: fixed; height: 100%; z-index: 1100 !important; } .bm-menu { background: #2c3e50; padding: 2.5em 1.5em 0; font-size: 1.15em; } .bm-morph-shape { fill: #373a47; } .bm-item-list { color: #b8b7ad; padding: 0.8em; } .bm-item { display: inline-block; outline: none; } .bm-overlay { background: rgba(0, 0, 0, 0.3); position: fixed; top: 0; left: 0; width: 100%; height: 100%; } .sidebar-title { color: #fff; margin-bottom: 2em; font-size: 1.5em; font-weight: bold; } .menu-item { display: flex; align-items: center; color: #ecf0f1; padding: 1em 0; text-decoration: none; font-size: 18px; } .menu-item:hover { color: #ffffff; } .menu-icon { margin-right: 16px; } .sidebar-divider { border-color: #34495e; margin: 1em 0; } .settings-link { margin-top: 1em; }
+.app-header { display: flex; align-items: center; background-color: #ffffff; color: #1a202c; padding: 10px 16px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); position: sticky; top: 0; z-index: 900; } .menu-button { background: none; border: none; color: #2d3748; padding: 8px; margin-right: 16px; cursor: pointer; } .header-title { font-size: 20px; margin: 0; }
+.page-container { padding: 16px; } .page-title { font-size: 28px; font-weight: 700; color: #1a202c; margin-bottom: 24px; }
 .card { background-color: #ffffff; border-radius: 12px; padding: 16px; margin-bottom: 20px; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05); border: 1px solid #e9ecef; }
-.card-title { font-size: 18px; font-weight: 600; color: #2d3748; margin-top: 0; margin-bottom: 16px; border-bottom: 1px solid #e9ecef; padding-bottom: 8px; position: relative; }
-.card-content { color: #495057; }
-
+.card-title { font-size: 18px; font-weight: 600; color: #2d3748; margin-top: 0; margin-bottom: 16px; border-bottom: 1px solid #e9ecef; padding-bottom: 8px; position: relative; } .card-content { color: #495057; }
 
 /* --- Premium Schedule View Styling --- */
-.schedule-grid { display: grid; grid-auto-flow: column; grid-auto-columns: 280px; gap: 12px; overflow-x: auto; padding: 8px; scrollbar-width: none; -ms-overflow-style: none; }
-.schedule-grid::-webkit-scrollbar { display: none; }
+.schedule-grid { display: grid; grid-auto-flow: column; grid-auto-columns: 280px; gap: 12px; overflow-x: auto; padding: 8px; scrollbar-width: none; -ms-overflow-style: none; } .schedule-grid::-webkit-scrollbar { display: none; }
 .day-column { background-color: transparent; border-radius: 12px; transition: all 0.3s ease; display: flex; flex-direction: column; }
-.day-column.current-day .day-header { background-color: #007bff; color: white; }
-.day-column.next-day .day-header { background-color: #28a745; color: white; }
+.day-column.current-day .day-header { background-color: #007bff; color: white; } .day-column.next-day .day-header { background-color: #28a745; color: white; }
 .day-header { font-weight: 600; font-size: 16px; text-align: center; padding: 12px 0; margin-bottom: 12px; background-color: #e9ecef; color: #495057; border-radius: 8px; position: sticky; top: 0; }
 .class-card { background-color: #ffffff; border-radius: 10px; padding: 14px; margin-bottom: 12px; border: 1px solid #dee2e6; transition: all 0.2s ease-in-out; cursor: pointer; }
 .class-card.current-class { border-left: 5px solid #007bff; transform: scale(1.02); box-shadow: 0 5px 15px rgba(0, 123, 255, 0.1); }
-.class-time { font-size: 13px; font-weight: 500; color: #6c757d; margin: 0 0 8px 0; }
-.class-name { font-size: 16px; font-weight: 600; color: #212529; margin: 0 0 4px 0; }
-.class-teacher { font-size: 13px; color: #6c757d; margin: 4px 0 0 0; }
-.class-topic { font-size: 14px; font-style: italic; color: #495057; margin: 4px 0; }
+.class-time { font-size: 13px; font-weight: 500; color: #6c757d; margin: 0 0 8px 0; } .class-name { font-size: 16px; font-weight: 600; color: #212529; margin: 0 0 4px 0; } .class-teacher { font-size: 13px; color: #6c757d; margin: 4px 0 0 0; } .class-topic { font-size: 14px; font-style: italic; color: #495057; margin: 4px 0; }
 .status-tag { display: inline-flex; align-items: center; gap: 6px; padding: 4px 8px; border-radius: 12px; font-size: 11px; font-weight: 700; text-transform: uppercase; margin-bottom: 8px; }
-.status-tag.status-canceled { background-color: #fed7d7; color: #c53030; }
-.status-tag.status-exam { background-color: #feebc8; color: #c05621; }
-.status-tag.status-extra-class { background-color: #c6f6d5; color: #2f855a; }
+.status-tag.status-canceled { background-color: #fed7d7; color: #c53030; } .status-tag.status-exam { background-color: #feebc8; color: #c05621; } .status-tag.status-extra-class { background-color: #c6f6d5; color: #2f855a; }
 .canceled-text { text-decoration: line-through; opacity: 0.7; }
 .reminder-indicator { display: flex; align-items: center; gap: 6px; margin-top: 10px; padding: 6px; background-color: #fffaf0; border-radius: 4px; font-size: 12px; color: #c05621; }
 .no-class-card { text-align: center; color: #999; font-style: italic; background-color: #ffffff; border-radius: 6px; padding: 12px; margin-bottom: 8px; border: 1px dashed #dee2e6; }
 
-
 /* --- Premium Attendance Tracker Styling --- */
 .attendance-card { background-color: #fff; border-radius: 12px; padding: 16px; margin-bottom: 16px; border: 1px solid #e9ecef; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05); }
-.card-header-flex { display: flex; justify-content: space-between; align-items: center; }
-.course-name-attendance { font-weight: 600; font-size: 18px; color: #212529; }
+.card-header-flex { display: flex; justify-content: space-between; align-items: center; } .course-name-attendance { font-weight: 600; font-size: 18px; color: #212529; }
 .undo-button { background-color: #f8f9fa; color: #6c757d; border: 1px solid #dee2e6; border-radius: 16px; padding: 4px 10px; font-size: 12px; display: flex; align-items: center; gap: 4px; cursor: pointer; }
-.course-info { display: flex; justify-content: space-between; align-items: baseline; margin-top: 4px; margin-bottom: 12px; }
-.attendance-stats { font-size: 14px; color: #6c757d; }
-.attendance-stats span { font-weight: 600; color: #212529; }
-.attendance-percentage { font-weight: 700; font-size: 24px; }
-.progress-bar-container { background-color: #e9ecef; border-radius: 10px; height: 8px; overflow: hidden; margin-bottom: 16px; }
-.progress-bar { height: 100%; border-radius: 10px; transition: width 0.4s ease-in-out; }
-.progress-bar.green { background-color: #28a745; }
-.progress-bar.orange { background-color: #fd7e14; }
-.progress-bar.red { background-color: #dc3545; }
-.action-buttons { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-.action-buttons button { padding: 12px; border-radius: 8px; border: none; font-size: 14px; font-weight: 600; cursor: pointer; transition: transform 0.1s ease; }
-.action-buttons button:active { transform: scale(0.97); }
-.attend-button { background-color: #eaf6f0; color: #28a745; }
-.miss-button { background-color: #fbe9e7; color: #dc3545; }
+.course-info { display: flex; justify-content: space-between; align-items: baseline; margin-top: 4px; margin-bottom: 12px; } .attendance-stats { font-size: 14px; color: #6c757d; } .attendance-stats span { font-weight: 600; color: #212529; } .attendance-percentage { font-weight: 700; font-size: 24px; }
+.progress-bar-container { background-color: #e9ecef; border-radius: 10px; height: 8px; overflow: hidden; margin-bottom: 16px; } .progress-bar { height: 100%; border-radius: 10px; transition: width 0.4s ease-in-out; } .progress-bar.green { background-color: #28a745; } .progress-bar.orange { background-color: #fd7e14; } .progress-bar.red { background-color: #dc3545; }
+.action-buttons { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; } .action-buttons button { padding: 12px; border-radius: 8px; border: none; font-size: 14px; font-weight: 600; cursor: pointer; transition: transform 0.1s ease; } .action-buttons button:active { transform: scale(0.97); } .attend-button { background-color: #eaf6f0; color: #28a745; } .miss-button { background-color: #fbe9e7; color: #dc3545; }
 
-
-/* --- Notes Module Styling --- */
+/* --- Notes Editor & FAB Styling --- */
 .fab-button { position: fixed; bottom: 20px; right: 20px; background-color: #007bff; color: white; border: none; border-radius: 28px; height: 56px; padding: 0 20px; box-shadow: 0 4px 12px rgba(0, 123, 255, 0.4); display: flex; align-items: center; justify-content: center; font-size: 16px; font-weight: 500; gap: 8px; z-index: 1001; }
-.note-editor-container { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: #fff; z-index: 2000; display: flex; flex-direction: column; }
-.note-editor-header { display: flex; align-items: center; padding: 8px; border-bottom: 1px solid #e2e8f0; }
-.back-button, .save-button { background: none; border: none; padding: 8px; color: #007bff; }
-.title-input { flex-grow: 1; border: none; font-size: 20px; font-weight: bold; padding: 8px; outline: none; }
-.content-textarea { flex-grow: 1; border: none; padding: 16px; font-size: 16px; line-height: 1.6; font-family: inherit; resize: none; outline: none; }
-.save-fab { bottom: 20px; }
+.note-editor-container { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: #fff; z-index: 2000; display: flex; flex-direction: column; } .note-editor-header { display: flex; align-items: center; padding: 8px; border-bottom: 1px solid #e2e8f0; } .back-button, .save-button { background: none; border: none; padding: 8px; color: #007bff; } .title-input { flex-grow: 1; border: none; font-size: 20px; font-weight: bold; padding: 8px; outline: none; } .content-textarea { flex-grow: 1; border: none; padding: 16px; font-size: 16px; line-height: 1.6; font-family: inherit; resize: none; outline: none; } .save-fab { bottom: 20px; }
 .empty-notes-message { text-align: center; margin-top: 40px; color: #718096; }
 
-
-/* --- Universal List & Resource Hub Styling (Consolidated & Corrected) --- */
-.list-container {
-  background-color: #fff;
-  border-radius: 12px;
-  overflow: hidden;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
-}
-.list-item-wrapper {
+/* --- [FINAL CORRECTED] Universal List & Resource Hub Styling --- */
+.list-container { background-color: #fff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05); }
+/* Wrapper for an entire clickable row that contains actions */
+.list-item-wrapper, .note-item {
   display: flex;
   align-items: center;
   border-bottom: 1px solid #e2e8f0;
+  padding: 0 16px; /* Padding is now on the wrapper */
 }
-.list-item-wrapper:last-child {
-  border-bottom: none;
-}
-.list-item {
+.list-item-wrapper:last-child, .note-item:last-child { border-bottom: none; }
+/* The main clickable area (text, icons) */
+.list-item, .note-item-content {
   flex-grow: 1;
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  padding: 16px;
+  gap: 16px;
+  padding: 16px 0; /* Vertical padding only */
   text-decoration: none;
   color: #2d3748;
   font-size: 16px;
   cursor: pointer;
 }
-.list-item:hover {
-  background-color: #f7fafc;
-}
-.list-item-actions {
-  padding-right: 16px;
+.list-item:hover, .note-item:hover { background-color: #f7fafc; }
+/* Container for the action buttons (edit, delete) */
+.list-item-actions, .note-item-actions {
   display: flex;
   gap: 8px;
 }
-.action-button {
-  background: none;
-  border: 1px solid #e2e8f0;
-  border-radius: 50%;
-  width: 36px;
-  height: 36px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: background-color 0.2s, color 0.2s;
-}
-.edit-button { color: #3182ce; }
-.edit-button:hover { background-color: #ebf8ff; }
-.delete-button { color: #c53030; }
-.delete-button:hover { background-color: #fff5f5; }
-.category-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  font-size: 16px;
-  font-weight: 600;
-  color: #4a5568;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  margin-bottom: 12px;
-  padding-bottom: 4px;
-  border-bottom: 2px solid #e2e8f0;
-}
-.category-title { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
-.category-actions { display: flex; gap: 8px; }
+.action-button { background: none; border: 1px solid #e2e8f0; border-radius: 50%; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: background-color 0.2s, color 0.2s; }
+.edit-button { color: #3182ce; } .edit-button:hover { background-color: #ebf8ff; }
+.delete-button { color: #c53030; } .delete-button:hover { background-color: #fff5f5; }
+/* Specific Resource Hub Styles */
+.category-header { display: flex; justify-content: space-between; align-items: center; font-size: 16px; font-weight: 600; color: #4a5568; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 12px; padding-bottom: 4px; border-bottom: 2px solid #e2e8f0; }
+.category-title { border-bottom: none; margin-bottom: 0; padding-bottom: 0; } .category-actions { display: flex; gap: 8px; }
 .resource-icon-container { flex-shrink: 0; width: 40px; height: 40px; border-radius: 50%; background-color: #eef2ff; color: #4338ca; display: flex; align-items: center; justify-content: center; }
 .resource-details { text-align: left; }
 .resource-title { font-size: 16px; font-weight: 600; color: #1e293b; margin: 0 0 4px 0; }
@@ -166,50 +82,21 @@ body {
 .page-action-menu .menu-item { padding: 12px 16px; color: #333; font-size: 16px; white-space: nowrap; cursor: pointer; display: flex; align-items: center; gap: 8px; }
 .page-action-menu .menu-item:hover { background-color: #f0f2f5; }
 
-
 /* --- Settings & Login Styling --- */
-.settings-section { background-color: #fff; border-radius: 12px; padding: 16px; }
-.admin-login-link-container { margin-top: 40px; text-align: center; }
-.admin-login-link { color: #718096; font-size: 14px; text-decoration: none; }
-.login-form { background-color: #fff; border-radius: 12px; padding: 24px; }
-.form-group { margin-bottom: 20px; }
-.form-group label { display: block; margin-bottom: 8px; font-weight: 500; color: #4a5568; }
-.form-group input { width: 100%; padding: 12px; border: 1px solid #cbd5e0; border-radius: 8px; font-size: 16px; }
-.login-button { width: 100%; padding: 14px; border: none; background-color: #007bff; color: white; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; }
-.logout-button { width: 100%; padding: 14px; margin-top: 16px; border: none; background-color: #dc3545; color: white; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; }
-.error-message { color: #e53e3e; text-align: center; margin-bottom: 16px; }
-.swal2-popup { border-radius: 12px !important; font-family: inherit !important; }
-.swal2-title { color: #2d3748 !important; }
-.swal2-confirm { background-color: #007bff !important; border-radius: 8px !important; }
-.swal2-cancel { border-radius: 8px !important; }
-.swal2-textarea { height: 150px !important; }
-
+.settings-section { background-color: #fff; border-radius: 12px; padding: 16px; } .admin-login-link-container { margin-top: 40px; text-align: center; } .admin-login-link { color: #718096; font-size: 14px; text-decoration: none; }
+.login-form { background-color: #fff; border-radius: 12px; padding: 24px; } .form-group { margin-bottom: 20px; } .form-group label { display: block; margin-bottom: 8px; font-weight: 500; color: #4a5568; } .form-group input { width: 100%; padding: 12px; border: 1px solid #cbd5e0; border-radius: 8px; font-size: 16px; } .login-button { width: 100%; padding: 14px; border: none; background-color: #007bff; color: white; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; } .logout-button { width: 100%; padding: 14px; margin-top: 16px; border: none; background-color: #dc3545; color: white; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; } .error-message { color: #e53e3e; text-align: center; margin-bottom: 16px; }
+.swal2-popup { border-radius: 12px !important; font-family: inherit !important; } .swal2-title { color: #2d3748 !important; } .swal2-confirm { background-color: #007bff !important; border-radius: 8px !important; } .swal2-cancel { border-radius: 8px !important; } .swal2-textarea { height: 150px !important; }
 
 /* --- Dashboard Task List & Admin Styling --- */
 .card-edit-button { position: absolute; top: 0; right: 0; background: none; border: none; padding: 8px; color: #6c757d; cursor: pointer; }
-.task-list { list-style-type: none; padding-left: 0; margin: 0; }
-.task-list li { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #f1f3f5; }
-.task-list li:last-child { border-bottom: none; }
-.task-text { font-weight: 500; }
-.task-due { font-style: italic; color: #6c757d; font-size: 14px; }
-#task-editor-list { display: flex; flex-direction: column; gap: 1em; }
-.task-editor-item { display: flex; align-items: center; gap: 10px; }
-.task-editor-item .task-text { flex-grow: 1; }
-.task-editor-item .task-due { flex-basis: 120px; }
-.task-delete-btn { flex-shrink: 0; }
-
+.task-list { list-style-type: none; padding-left: 0; margin: 0; } .task-list li { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #f1f3f5; } .task-list li:last-child { border-bottom: none; } .task-text { font-weight: 500; } .task-due { font-style: italic; color: #6c757d; font-size: 14px; }
+#task-editor-list { display: flex; flex-direction: column; gap: 1em; } .task-editor-item { display: flex; align-items: center; gap: 10px; } .task-editor-item .task-text { flex-grow: 1; } .task-editor-item .task-due { flex-basis: 120px; } .task-delete-btn { flex-shrink: 0; }
 
 /* --- Dashboard Today's Schedule List Styling --- */
-.schedule-list { list-style-type: none; padding-left: 0; margin: 0; }
-.schedule-list li { display: flex; align-items: center; padding: 8px 0; border-bottom: 1px solid #f1f3f5; }
-.schedule-list li:last-child { border-bottom: none; }
-.schedule-list .class-time { flex-basis: 120px; flex-shrink: 0; font-size: 14px; font-weight: 500; color: #6c757d; display: flex; align-items: center; gap: 6px; }
-.schedule-list .class-name { font-weight: 500; color: #212529; }
-
+.schedule-list { list-style-type: none; padding-left: 0; margin: 0; } .schedule-list li { display: flex; align-items: center; padding: 8px 0; border-bottom: 1px solid #f1f3f5; } .schedule-list li:last-child { border-bottom: none; } .schedule-list .class-time { flex-basis: 120px; flex-shrink: 0; font-size: 14px; font-weight: 500; color: #6c757d; display: flex; align-items: center; gap: 6px; } .schedule-list .class-name { font-weight: 500; color: #212529; }
 
 /* --- Dropdown Menu for Edit Day Button --- */
 .dropdown { position: relative; display: inline-block; }
 .dropdown-content { display: none; position: absolute; right: 0; top: 110%; background-color: #ffffff; min-width: 180px; box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.15); z-index: 10; border-radius: 8px; overflow: hidden; border: 1px solid #e9ecef; }
-.dropdown-content a { color: #212529; padding: 12px 16px; text-decoration: none; display: block; text-align: left; font-size: 15px; }
-.dropdown-content a:hover { background-color: #f8f9fa; }
+.dropdown-content a { color: #212529; padding: 12px 16px; text-decoration: none; display: block; text-align: left; font-size: 15px; } .dropdown-content a:hover { background-color: #f8f9fa; }
 .dropdown:hover .dropdown-content { display: block; }
