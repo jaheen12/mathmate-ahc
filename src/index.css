@@ -979,3 +979,80 @@ Note: You also need a wrapper div structure in your app.jsx page structure
   font-size: 12px;
   color: #c05621;
 }
+
+/* --- Schedule Editor Styling --- */
+.schedule-editor-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.editor-class-card {
+  background: #fff;
+  border-radius: 8px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  position: relative;
+}
+.editor-class-card input, .editor-class-card select {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  font-size: 14px;
+}
+.remove-class-button {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: none;
+  border: none;
+  color: #e53e3e;
+  padding: 4px;
+  cursor: pointer;
+}
+.add-class-button {
+  background-color: #f0f2f5;
+  border: 2px dashed #cbd5e0;
+  color: #4a5568;
+  padding: 12px;
+  border-radius: 8px;
+  width: 100%;
+  margin-top: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+.save-schedule-button {
+  color: #007bff;
+}
+
+/* Dropdown menu for Edit Day button */
+.dropdown {
+  position: relative;
+  display: inline-block;
+}
+.dropdown-content {
+  display: none;
+  position: absolute;
+  right: 0;
+  background-color: #f9f9f9;
+  min-width: 160px;
+  box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
+  z-index: 1;
+  border-radius: 8px;
+}
+.dropdown-content a {
+  color: black;
+  padding: 12px 16px;
+  text-decoration: none;
+  display: block;
+}
+.dropdown-content a:hover {
+  background-color: #f1f1f1;
+}
+.dropdown:hover .dropdown-content {
+  display: block;
+}
