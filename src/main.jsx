@@ -1,4 +1,6 @@
 // src/main.jsx
+import { Capacitor } from '@capacitor/core';
+window.Capacitor = Capacitor;
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App.jsx';
