@@ -10,7 +10,7 @@ function Sidebar({ isOpen, onStateChange, onLinkClick }) {
     { path: '/', icon: LayoutDashboard, label: 'Dashboard' },
     { path: '/schedule', icon: Calendar, label: 'Schedule' },
     { path: '/notes/subjects', icon: BookOpen, label: 'Official Notes' },
-    { path: '/personal-notes', icon: NotebookText, label: 'Personal Notes' },
+    { path: '/notes/personal/subjects', icon: NotebookText, label: 'Personal Notes' },
     { path: '/resources', icon: Library, label: 'Resources' },
     { path: '/attendance', icon: UserCheck, label: 'Attendance' },
     { path: '/notices', icon: Megaphone, label: 'Notices' },

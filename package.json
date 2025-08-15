@@ -11,8 +11,10 @@
   },
   "dependencies": {
     "@capacitor/android": "5.7.0",
+    "@capacitor/camera": "^5.0.10",
     "@capacitor/cli": "5.7.0",
     "@capacitor/core": "5.7.0",
+    "@capacitor/filesystem": "^5.2.2",
     "firebase": "^10.12.2",
     "lucide-react": "^0.395.0",
     "react": "^18.3.1",
