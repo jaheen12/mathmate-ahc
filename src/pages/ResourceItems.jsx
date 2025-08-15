@@ -12,26 +12,32 @@ const MySwal = withReactContent(Swal);
 function ResourceItems() {
   const { categoryId, chapterId } = useParams();
   const navigate = useNavigate();
-  const [items, setItems] = useState([]);
+  const ITEMS_CACHE_KEY = `mathmate-cache-items-${categoryId}-${chapterId}`;
+  
+  const [items, setItems] = useState(() => JSON.parse(localStorage.getItem(ITEMS_CACHE_KEY)) || []);
   const [isLoading, setIsLoading] = useState(true);
   const { currentUser } = useAuth();
 
   const fetchItems = async () => {
     if (!categoryId || !chapterId) return;
-    setIsLoading(true);
+    if (items.length === 0) setIsLoading(true);
     try {
       const itemsRef = collection(db, `resources/${categoryId}/chapters/${chapterId}/resources`);
       const querySnapshot = await getDocs(itemsRef);
-      const resItems = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      setItems(resItems);
-    } catch (error) { console.error("Error fetching items: ", error); }
-    finally { setIsLoading(false); }
+      const freshItems = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setItems(freshItems);
+      localStorage.setItem(ITEMS_CACHE_KEY, JSON.stringify(freshItems));
+    } catch (error) {
+      console.error("Error fetching items (might be offline): ", error);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   useEffect(() => {
     fetchItems();
   }, [categoryId, chapterId]);
-
+  
   const handleOpenItemForm = (item = null) => {
     const isEditing = !!item;
     MySwal.fire({
@@ -41,7 +47,8 @@ function ResourceItems() {
         <input id="swal-desc" class="swal2-input" placeholder="Description" value="${item ? item.description : ''}">
         <input id="swal-url" class="swal2-input" placeholder="URL (https://...)" value="${item ? item.url : ''}">
       `,
-      confirmButtonText: 'Save', showCancelButton: true,
+      confirmButtonText: 'Save',
+      showCancelButton: true,
       preConfirm: () => {
         const title = document.getElementById('swal-title').value;
         const url = document.getElementById('swal-url').value;
@@ -68,8 +75,13 @@ function ResourceItems() {
   };
 
   const handleDeleteItem = (item) => {
-    MySwal.fire({ title: 'Delete Item?', text: `Delete "${item.title}"?`, icon: 'warning',
-      showCancelButton: true, confirmButtonColor: '#d33', confirmButtonText: 'Yes, delete it!'
+    MySwal.fire({
+      title: 'Delete Item?',
+      text: `Delete "${item.title}"?`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#d33',
+      confirmButtonText: 'Yes, delete it!'
     }).then(async (result) => {
       if (result.isConfirmed) {
         const itemRef = doc(db, `resources/${categoryId}/chapters/${chapterId}/resources`, item.id);
@@ -89,23 +101,23 @@ function ResourceItems() {
             <button className="page-action-button" onClick={() => handleOpenItemForm()}><Plus size={24} /></button>
         )}
       </div>
-      {isLoading ? <p>Loading...</p> : (
+      {isLoading && items.length === 0 ? <p>Loading resources...</p> : (
         <div className="list-container">
           {items.map((item) => (
             <div key={item.id} className="list-item-wrapper">
               <div className="list-item" onClick={() => window.open(item.url, '_blank')}>
                 <div style={{display: 'flex', alignItems: 'center', gap: '16px'}}>
-                    <div className="resource-icon-container"><LinkIcon /></div>
-                    <div className="resource-details">
-                        <p className="resource-title">{item.title}</p>
-                        <p className="resource-description">{item.description}</p>
-                    </div>
+                  <div className="resource-icon-container"><LinkIcon /></div>
+                  <div className="resource-details">
+                    <p className="resource-title">{item.title}</p>
+                    <p className="resource-description">{item.description}</p>
+                  </div>
                 </div>
               </div>
               {currentUser && (
                 <div className="list-item-actions">
-                    <button className="action-button edit-button" onClick={() => handleOpenItemForm(item)}><Pencil size={18} /></button>
-                    <button className="action-button delete-button" onClick={() => handleDeleteItem(item)}><Trash2 size={18} /></button>
+                  <button className="action-button edit-button" onClick={() => handleOpenItemForm(item)}><Pencil size={18} /></button>
+                  <button className="action-button delete-button" onClick={() => handleDeleteItem(item)}><Trash2 size={18} /></button>
                 </div>
               )}
             </div>

@@ -2,26 +2,39 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { ChevronRight, Plus, Pencil, Trash2 } from 'lucide-react';
 import { db } from '../firebaseConfig';
-import { collection, getDocs, doc, setDoc, deleteDoc, writeBatch } from 'firebase/firestore';
+import { collection, getDocs, doc, setDoc, deleteDoc } from 'firebase/firestore';
 import { useAuth } from '../AuthContext';
 import Swal from 'sweetalert2';
 import withReactContent from 'sweetalert2-react-content';
 
 const MySwal = withReactContent(Swal);
+const CATEGORIES_CACHE_KEY = 'mathmate-cache-categories';
 
 function ResourceCategories() {
-  const [categories, setCategories] = useState([]);
+  const [categories, setCategories] = useState(() => JSON.parse(localStorage.getItem(CATEGORIES_CACHE_KEY)) || []);
   const [isLoading, setIsLoading] = useState(true);
   const { currentUser } = useAuth();
 
   const fetchCategories = async () => {
-    setIsLoading(true);
+    // Only show the main loader if there's no cached data at all
+    if (categories.length === 0) {
+      setIsLoading(true);
+    }
+    
     try {
       const querySnapshot = await getDocs(collection(db, "resources"));
-      const cats = querySnapshot.docs.map(doc => ({ id: doc.id, name: doc.data().name })).sort((a, b) => a.name.localeCompare(b.name));
-      setCategories(cats);
-    } catch (error) { console.error("Error fetching categories: ", error); }
-    finally { setIsLoading(false); }
+      const freshCats = querySnapshot.docs.map(doc => ({
+        id: doc.id,
+        name: doc.data().name
+      })).sort((a, b) => a.name.localeCompare(b.name));
+      
+      setCategories(freshCats);
+      localStorage.setItem(CATEGORIES_CACHE_KEY, JSON.stringify(freshCats));
+    } catch (error) {
+      console.error("Error fetching categories (might be offline): ", error);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -30,30 +43,33 @@ function ResourceCategories() {
 
   const handleAddCategory = () => {
     MySwal.fire({
-      title: 'Add New Category', input: 'text', inputPlaceholder: 'Enter category name',
-      showCancelButton: true, confirmButtonText: 'Create'
+      title: 'Add New Category',
+      input: 'text',
+      inputPlaceholder: 'Enter category name',
+      showCancelButton: true,
+      confirmButtonText: 'Create'
     }).then(async (result) => {
       if (result.isConfirmed && result.value) {
-        const categoryId = result.value.toLowerCase().replace(/\s+/g, '-'); // e.g., "Past Papers" -> "past-papers"
+        const categoryId = result.value.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
         const categoryRef = doc(db, 'resources', categoryId);
         await setDoc(categoryRef, { name: result.value });
-        fetchCategories();
+        fetchCategories(); // Refresh from cloud
         Swal.fire('Created!', 'The new category has been added.', 'success');
       }
     });
   };
 
   const handleRenameCategory = (cat) => {
-    // Logic to rename a category (can be complex, let's keep it simple for now by deleting and re-adding)
-    // A true rename requires moving subcollections, which is a more advanced operation.
-    // For now, we will just edit the display name.
     MySwal.fire({
-      title: 'Rename Category', input: 'text', inputValue: cat.name, showCancelButton: true
+      title: 'Rename Category',
+      input: 'text',
+      inputValue: cat.name,
+      showCancelButton: true
     }).then(async (result) => {
         if(result.isConfirmed && result.value) {
             const categoryRef = doc(db, 'resources', cat.id);
             await setDoc(categoryRef, { name: result.value });
-            fetchCategories();
+            fetchCategories(); // Refresh from cloud
             Swal.fire('Renamed!', 'The category name has been updated.', 'success');
         }
     });
@@ -61,16 +77,19 @@ function ResourceCategories() {
 
   const handleDeleteCategory = (cat) => {
     MySwal.fire({
-      title: 'Are you sure?', text: `This will delete the category "${cat.name}" and ALL chapters and resources inside it. This cannot be undone.`,
-      icon: 'warning', showCancelButton: true, confirmButtonColor: '#d33', confirmButtonText: 'Yes, delete it!'
+      title: 'Are you sure?',
+      text: `This will delete "${cat.name}" and ALL content inside. This cannot be undone.`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#d33',
+      confirmButtonText: 'Yes, delete it!'
     }).then(async (result) => {
       if (result.isConfirmed) {
-        // NOTE: Deleting subcollections is complex. A proper implementation uses Cloud Functions.
-        // For the client, we can only delete the parent document. The subcollections will become "orphaned".
-        // This is an acceptable simplification for our current app.
+        // Note: For a real app, deleting subcollections requires a Cloud Function.
+        // This will only delete the main category document.
         const categoryRef = doc(db, 'resources', cat.id);
         await deleteDoc(categoryRef);
-        fetchCategories();
+        fetchCategories(); // Refresh from cloud
         Swal.fire('Deleted!', 'The category has been deleted.', 'success');
       }
     });
@@ -87,7 +106,7 @@ function ResourceCategories() {
         )}
       </div>
 
-      {isLoading ? <p>Loading...</p> : (
+      {isLoading && categories.length === 0 ? <p>Loading categories...</p> : (
         <div className="list-container">
           {categories.map(category => (
             <div key={category.id} className="list-item-wrapper">
@@ -112,4 +131,5 @@ function ResourceCategories() {
     </div>
   );
 }
+
 export default ResourceCategories;

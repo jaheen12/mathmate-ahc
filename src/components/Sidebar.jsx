@@ -9,7 +9,7 @@ function Sidebar({ isOpen, onStateChange, onLinkClick }) {
   const navItems = [
     { path: '/', icon: LayoutDashboard, label: 'Dashboard' },
     { path: '/schedule', icon: Calendar, label: 'Schedule' },
-    { path: '/official-notes', icon: BookOpen, label: 'Official Notes' },
+    { path: '/notes/subjects', icon: BookOpen, label: 'Official Notes' },
     { path: '/personal-notes', icon: NotebookText, label: 'Personal Notes' },
     { path: '/resources', icon: Library, label: 'Resources' },
     { path: '/attendance', icon: UserCheck, label: 'Attendance' },

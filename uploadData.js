@@ -1,50 +1,46 @@
 // uploadData.js
 import { collection, doc, setDoc, writeBatch } from 'firebase/firestore';
 import { db } from './src/firebaseConfig.js';
-// Import the new tasks object
-import { schedule, resources, courses, tasks } from './src/data/masterData.js';
+import { schedule, resources, courses, tasks, officialNotes } from './src/data/masterData.js';
 
 async function uploadAllData() {
   console.log('Starting data upload...');
   const batch = writeBatch(db);
 
   try {
-    // Upload Schedule
-    console.log('Uploading schedule...');
-    const scheduleRef = doc(db, 'schedule', 'main-schedule');
-    batch.set(scheduleRef, schedule);
-    
-    // Upload Resources
-    console.log('Uploading resources...');
-    for (const categoryId in resources) {
-        const categoryData = resources[categoryId];
-        const categoryRef = doc(db, 'resources', categoryId);
-        batch.set(categoryRef, { name: categoryData.name });
-        for (const chapterId in categoryData.chapters) {
-            const chapterData = categoryData.chapters[chapterId];
-            const chapterRef = doc(db, `resources/${categoryId}/chapters`, chapterId);
-            batch.set(chapterRef, { name: chapterData.name });
-            for (const resource of chapterData.resources) {
-                const resourceRef = doc(collection(db, `resources/${categoryId}/chapters/${chapterId}/resources`));
-                batch.set(resourceRef, resource);
-            }
-        }
+    // --- COLLECTIONS WITH A SINGLE DOCUMENT ---
+    console.log('Uploading single-document collections...');
+    const singleDocs = {
+      'schedule': { id: 'main-schedule', data: schedule },
+      'courses': { id: 'main-list', data: { list: courses } },
+      'tasks': { id: 'main-list', data: { list: tasks } },
+    };
+    for (const collName in singleDocs) {
+      const { id, data } = singleDocs[collName];
+      const docRef = doc(db, collName, id);
+      batch.set(docRef, data);
     }
-    
-    // Upload Course List
-    console.log('Uploading course list...');
-    const coursesRef = doc(db, 'courses', 'main-list');
-    batch.set(coursesRef, { list: courses });
-    
-    // --- NEW: Upload Task List ---
-    console.log('Uploading task list...');
-    const tasksRef = doc(db, 'tasks', 'main-list');
-    batch.set(tasksRef, { list: tasks }); // We store the empty array in a 'list' field
-    console.log('Task list queued for upload.');
+    console.log('Single-document collections queued.');
 
-    // Commit all changes at once
+    // --- COLLECTIONS WITH MULTIPLE DOCUMENTS (like our hierarchies) ---
+    console.log('Uploading multi-document collections...');
+    const multiDocs = {
+      'resources': resources,
+      'official_notes': officialNotes,
+    };
+    for (const collName in multiDocs) {
+      const dataObject = multiDocs[collName];
+      for (const docId in dataObject) {
+        const docData = dataObject[docId];
+        const docRef = doc(db, collName, docId);
+        batch.set(docRef, docData);
+      }
+    }
+    console.log('Multi-document collections queued.');
+
+    // Commit all changes
     await batch.commit();
-    console.log('\n🎉 All data has been uploaded to Firestore!');
+    console.log('\n🎉 All data has been successfully uploaded to Firestore!');
 
   } catch (error) {
     console.error('❌ Error uploading data:', error);

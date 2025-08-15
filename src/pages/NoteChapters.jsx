@@ -2,36 +2,42 @@ import React, { useState, useEffect } from 'react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
 import { ChevronRight, ArrowLeft, Plus, Pencil, Trash2 } from 'lucide-react';
 import { db } from '../firebaseConfig';
-import { collection, getDocs, doc, setDoc, deleteDoc } from 'firebase/firestore';
+import { collection, getDocs, doc, getDoc, setDoc, deleteDoc, updateDoc } from 'firebase/firestore';
 import { useAuth } from '../AuthContext';
 import Swal from 'sweetalert2';
 import withReactContent from 'sweetalert2-react-content';
 
 const MySwal = withReactContent(Swal);
 
-function ResourceChapters() {
-  const { categoryId } = useParams();
+function NoteChapters() {
+  const { subjectId } = useParams();
   const navigate = useNavigate();
-  const CHAPTERS_CACHE_KEY = `mathmate-cache-chapters-${categoryId}`;
-  
-  const [chapters, setChapters] = useState(() => JSON.parse(localStorage.getItem(CHAPTERS_CACHE_KEY)) || []);
+  const [chapters, setChapters] = useState([]);
+  const [subjectName, setSubjectName] = useState(subjectId);
   const [isLoading, setIsLoading] = useState(true);
   const { currentUser } = useAuth();
 
   const fetchChapters = async () => {
-    if (!categoryId) return;
-    if (chapters.length === 0) setIsLoading(true);
+    if (!subjectId) return;
+    setIsLoading(true);
     try {
-      const chaptersRef = collection(db, `resources/${categoryId}/chapters`);
+      // First, get the subject's display name from the parent document
+      const subjectRef = doc(db, 'official_notes', subjectId);
+      const subjectSnap = await getDoc(subjectRef);
+      if (subjectSnap.exists()) {
+        setSubjectName(subjectSnap.data().name);
+      }
+
+      // Then, get all documents from the 'chapters' sub-collection
+      const chaptersRef = collection(db, `official_notes/${subjectId}/chapters`);
       const querySnapshot = await getDocs(chaptersRef);
-      const freshChaps = querySnapshot.docs.map(doc => ({
+      const chaps = querySnapshot.docs.map(doc => ({
         id: doc.id,
         name: doc.data().name
       })).sort((a,b) => a.name.localeCompare(b.name));
-      setChapters(freshChaps);
-      localStorage.setItem(CHAPTERS_CACHE_KEY, JSON.stringify(freshChaps));
+      setChapters(chaps);
     } catch (error) {
-      console.error("Error fetching chapters (might be offline): ", error);
+      console.error("Error fetching chapters: ", error);
     } finally {
       setIsLoading(false);
     }
@@ -39,21 +45,18 @@ function ResourceChapters() {
 
   useEffect(() => {
     fetchChapters();
-  }, [categoryId]);
-  
+  }, [subjectId]);
+
   const handleAddChapter = () => {
     MySwal.fire({
-        title: 'Add New Chapter',
-        input: 'text',
-        inputPlaceholder: 'Enter chapter name',
-        showCancelButton: true,
-        confirmButtonText: 'Create'
+        title: 'Add New Chapter', input: 'text', inputPlaceholder: 'Enter chapter name',
+        showCancelButton: true, confirmButtonText: 'Create'
     }).then(async (result) => {
         if(result.isConfirmed && result.value) {
             const chapterId = result.value.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
-            const chapterRef = doc(db, `resources/${categoryId}/chapters`, chapterId);
+            const chapterRef = doc(db, `official_notes/${subjectId}/chapters`, chapterId);
             await setDoc(chapterRef, { name: result.value });
-            fetchChapters();
+            fetchChapters(); // Re-fetch after successful save
             Swal.fire('Created!', 'The new chapter has been added.', 'success');
         }
     });
@@ -61,15 +64,12 @@ function ResourceChapters() {
   
   const handleEditChapter = (chap) => {
     MySwal.fire({
-        title: 'Rename Chapter',
-        input: 'text',
-        inputValue: chap.name,
-        showCancelButton: true
+        title: 'Rename Chapter', input: 'text', inputValue: chap.name, showCancelButton: true
     }).then(async (result) => {
         if(result.isConfirmed && result.value) {
-            const chapterRef = doc(db, `resources/${categoryId}/chapters`, chap.id);
-            await setDoc(chapterRef, { name: result.value }, { merge: true });
-            fetchChapters();
+            const chapterRef = doc(db, `official_notes/${subjectId}/chapters`, chap.id);
+            await updateDoc(chapterRef, { name: result.value });
+            fetchChapters(); // Re-fetch after successful save
             Swal.fire('Renamed!', 'The chapter name has been updated.', 'success');
         }
     });
@@ -77,19 +77,13 @@ function ResourceChapters() {
 
   const handleDeleteChapter = (chap) => {
     MySwal.fire({
-      title: 'Are you sure?',
-      text: `This will delete "${chap.name}" and ALL resources inside it.`,
-      icon: 'warning',
-      showCancelButton: true,
-      confirmButtonColor: '#d33',
-      confirmButtonText: 'Yes, delete it!'
+      title: 'Are you sure?', text: `This will delete the chapter "${chap.name}" and ALL notes inside it.`,
+      icon: 'warning', showCancelButton: true, confirmButtonColor: '#d33', confirmButtonText: 'Yes, delete it!'
     }).then(async (result) => {
         if(result.isConfirmed) {
-            // As before, this only deletes the chapter document.
-            // A Cloud Function is needed to delete the subcollection properly.
-            const chapterRef = doc(db, `resources/${categoryId}/chapters`, chap.id);
+            const chapterRef = doc(db, `official_notes/${subjectId}/chapters`, chap.id);
             await deleteDoc(chapterRef);
-            fetchChapters();
+            fetchChapters(); // Re-fetch after successful save
             Swal.fire('Deleted!', 'The chapter has been deleted.', 'success');
         }
     });
@@ -99,16 +93,16 @@ function ResourceChapters() {
     <div className="page-container">
       <div className="page-header-row">
         <button onClick={() => navigate(-1)} className="back-button-page"><ArrowLeft /></button>
-        <h1 className="page-title">{categoryId}</h1>
+        <h1 className="page-title">{subjectName}</h1>
         {currentUser && (
             <button className="page-action-button" onClick={handleAddChapter}><Plus size={24} /></button>
         )}
       </div>
-      {isLoading && chapters.length === 0 ? <p>Loading chapters...</p> : (
+      {isLoading ? <p>Loading chapters...</p> : (
         <div className="list-container">
-          {chapters.map(chapter => (
+          {chapters.length > 0 ? chapters.map(chapter => (
             <div key={chapter.id} className="list-item-wrapper">
-                <Link to={`/resources/${categoryId}/${chapter.id}`} className="list-item">
+                <Link to={`/notes/${subjectId}/${chapter.id}`} className="list-item">
                     <span>{chapter.name}</span>
                     <ChevronRight />
                 </Link>
@@ -119,10 +113,11 @@ function ResourceChapters() {
                     </div>
                 )}
             </div>
-          ))}
+          )) : <p className="empty-message">No chapters yet. Add one!</p>}
         </div>
       )}
     </div>
   );
 }
-export default ResourceChapters;
+
+export default NoteChapters;
