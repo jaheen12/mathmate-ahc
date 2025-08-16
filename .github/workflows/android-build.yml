@@ -35,7 +35,17 @@ jobs:
       - name: Add Android Platform
         run: npx cap add android
 
-      - name: Sync Web Assets
+      # --- NEW STEP TO ADD PERMISSIONS ---
+      - name: Add Android Permissions
+        run: |
+          # Use npx capacitor-configure to add permissions to AndroidManifest.xml
+          # This is safer than manually editing the file.
+          # We need READ_MEDIA_IMAGES for gallery access on modern Android.
+          # We still need READ_EXTERNAL_STORAGE for older Android versions.
+          npx capacitor-configure add android.permission.READ_MEDIA_IMAGES
+          npx capacitor-configure add android.permission.READ_EXTERNAL_STORAGE
+
+      - name: Sync Web Assets and Plugins
         run: npx cap sync android
           
       - name: Build Debug APK

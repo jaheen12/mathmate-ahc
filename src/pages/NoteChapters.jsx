@@ -12,51 +12,66 @@ const MySwal = withReactContent(Swal);
 function NoteChapters() {
   const { subjectId } = useParams();
   const navigate = useNavigate();
-  const [chapters, setChapters] = useState([]);
+  const CHAPTERS_CACHE_KEY = `mathmate-cache-note-chapters-${subjectId}`;
+  
+  const [chapters, setChapters] = useState(() => JSON.parse(localStorage.getItem(CHAPTERS_CACHE_KEY)) || []);
   const [subjectName, setSubjectName] = useState(subjectId);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(chapters.length === 0);
   const { currentUser } = useAuth();
 
+  // --- THE FIX IS HERE: Move fetchChapters outside of useEffect ---
   const fetchChapters = async () => {
     if (!subjectId) return;
-    setIsLoading(true);
+    // We only set loading to true on the very first fetch
+    if (chapters.length === 0) setIsLoading(true);
     try {
-      // First, get the subject's display name from the parent document
       const subjectRef = doc(db, 'official_notes', subjectId);
       const subjectSnap = await getDoc(subjectRef);
       if (subjectSnap.exists()) {
         setSubjectName(subjectSnap.data().name);
       }
-
-      // Then, get all documents from the 'chapters' sub-collection
+      
       const chaptersRef = collection(db, `official_notes/${subjectId}/chapters`);
       const querySnapshot = await getDocs(chaptersRef);
-      const chaps = querySnapshot.docs.map(doc => ({
+      const freshChaps = querySnapshot.docs.map(doc => ({
         id: doc.id,
         name: doc.data().name
       })).sort((a,b) => a.name.localeCompare(b.name));
-      setChapters(chaps);
+      
+      // Only update state if data has changed to prevent infinite loops
+      if (JSON.stringify(freshChaps) !== JSON.stringify(chapters)) {
+        setChapters(freshChaps);
+        localStorage.setItem(CHAPTERS_CACHE_KEY, JSON.stringify(freshChaps));
+      }
     } catch (error) {
-      console.error("Error fetching chapters: ", error);
+      console.error("Error fetching chapters (might be offline): ", error);
     } finally {
       setIsLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchChapters();
+    // useEffect now just calls the function
+    if (navigator.onLine) {
+      fetchChapters();
+    } else {
+      setIsLoading(false);
+    }
   }, [subjectId]);
-
+  
   const handleAddChapter = () => {
     MySwal.fire({
-        title: 'Add New Chapter', input: 'text', inputPlaceholder: 'Enter chapter name',
-        showCancelButton: true, confirmButtonText: 'Create'
+        title: 'Add New Chapter',
+        input: 'text',
+        inputPlaceholder: 'Enter chapter name',
+        showCancelButton: true,
+        confirmButtonText: 'Create'
     }).then(async (result) => {
         if(result.isConfirmed && result.value) {
             const chapterId = result.value.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
             const chapterRef = doc(db, `official_notes/${subjectId}/chapters`, chapterId);
             await setDoc(chapterRef, { name: result.value });
-            fetchChapters(); // Re-fetch after successful save
+            fetchChapters(); // This will now work
             Swal.fire('Created!', 'The new chapter has been added.', 'success');
         }
     });
@@ -64,12 +79,15 @@ function NoteChapters() {
   
   const handleEditChapter = (chap) => {
     MySwal.fire({
-        title: 'Rename Chapter', input: 'text', inputValue: chap.name, showCancelButton: true
+        title: 'Rename Chapter',
+        input: 'text',
+        inputValue: chap.name,
+        showCancelButton: true
     }).then(async (result) => {
         if(result.isConfirmed && result.value) {
             const chapterRef = doc(db, `official_notes/${subjectId}/chapters`, chap.id);
             await updateDoc(chapterRef, { name: result.value });
-            fetchChapters(); // Re-fetch after successful save
+            fetchChapters(); // This will now work
             Swal.fire('Renamed!', 'The chapter name has been updated.', 'success');
         }
     });
@@ -77,13 +95,17 @@ function NoteChapters() {
 
   const handleDeleteChapter = (chap) => {
     MySwal.fire({
-      title: 'Are you sure?', text: `This will delete the chapter "${chap.name}" and ALL notes inside it.`,
-      icon: 'warning', showCancelButton: true, confirmButtonColor: '#d33', confirmButtonText: 'Yes, delete it!'
+      title: 'Are you sure?',
+      text: `This will delete the chapter "${chap.name}" and ALL notes inside it.`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#d33',
+      confirmButtonText: 'Yes, delete it!'
     }).then(async (result) => {
         if(result.isConfirmed) {
             const chapterRef = doc(db, `official_notes/${subjectId}/chapters`, chap.id);
             await deleteDoc(chapterRef);
-            fetchChapters(); // Re-fetch after successful save
+            fetchChapters(); // This will now work
             Swal.fire('Deleted!', 'The chapter has been deleted.', 'success');
         }
     });

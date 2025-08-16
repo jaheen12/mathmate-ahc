@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Plus, Pencil, Trash2, Search, Paperclip, Image as ImageIcon, File as FileIcon } from 'lucide-react';
+import { ArrowLeft, Plus, Pencil, Trash2, Search, Paperclip } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
 import Swal from 'sweetalert2';
 import withReactContent from 'sweetalert2-react-content';
@@ -51,9 +51,15 @@ function PersonalNoteItems() {
       showCancelButton: true, confirmButtonColor: '#d33', confirmButtonText: 'Yes, delete it!'
     }).then(result => {
       if (result.isConfirmed) {
-        // Also delete associated files here in a real app
         const db = getInitialDb();
         let chapterNotes = db[chapterId] || [];
+        const noteToDelete = chapterNotes.find(n => n.id === noteId);
+        // Future improvement: Delete files from filesystem
+        // if (noteToDelete && noteToDelete.attachments) {
+        //   noteToDelete.attachments.forEach(att => {
+        //     Filesystem.deleteFile({ path: att.uri, directory: Directory.Data });
+        //   });
+        // }
         const updatedNotes = chapterNotes.filter(n => n.id !== noteId);
         db[chapterId] = updatedNotes;
         saveDb(db);
@@ -71,7 +77,6 @@ function PersonalNoteItems() {
       data: base64Data,
       directory: Directory.Data
     });
-    // We need to convert the file path for correct display on Android WebView
     return Capacitor.convertFileSrc(savedFile.uri);
   };
 
@@ -83,25 +88,26 @@ function PersonalNoteItems() {
         resultType: CameraResultType.Base64,
         source: CameraSource.Prompt
       });
-      const savedImageUri = await saveFile(image);
-      const newAttachment = { id: uuidv4(), type: 'image', uri: savedImageUri, name: 'Image' };
-      
-      const attachments = (note ? note.attachments : modalAttachments) || [];
-      const updatedAttachments = [...attachments, newAttachment];
-
-      setModalAttachments(updatedAttachments);
-      handleOpenNoteForm(note, updatedAttachments);
+      if (image) {
+        const savedImageUri = await saveFile(image);
+        const newAttachment = { id: uuidv4(), type: 'image', uri: savedImageUri, name: 'Image' };
+        const attachments = (note ? note.attachments : modalAttachments) || [];
+        const updatedAttachments = [...attachments, newAttachment];
+        setModalAttachments(updatedAttachments);
+        handleOpenNoteForm(note, updatedAttachments);
+      }
     } catch (error) {
       console.error("Error attaching photo:", error);
-      Swal.fire('Error', 'Could not attach photo.', 'error');
+      if (error.message !== "User cancelled photos app") {
+        Swal.fire('Error', 'Could not attach photo. Please ensure app has permissions.', 'error');
+      }
     }
   };
 
-  const handleOpenNoteForm = (note = null, attachments = []) => {
+  const handleOpenNoteForm = (note = null, attachments) => {
     const isEditing = !!note;
-    const currentAttachments = isEditing ? (note.attachments || []) : attachments;
+    const currentAttachments = attachments !== undefined ? attachments : (note?.attachments || []);
     setModalAttachments(currentAttachments);
-
     MySwal.fire({
       title: isEditing ? 'Edit Personal Note' : 'Add Personal Note',
       html: `
@@ -144,10 +150,28 @@ function PersonalNoteItems() {
         const finalData = { ...result.value, attachments: modalAttachments };
         handleSaveNote(finalData);
         Swal.fire('Saved!', 'Your note has been saved on this device.', 'success');
-        setModalAttachments([]);
-      } else {
-        setModalAttachments([]);
       }
+      setModalAttachments([]);
+    });
+  };
+
+  const handleViewNote = (note) => {
+    const attachmentsHtml = (note.attachments || []).map(att => 
+      att.type === 'image' ? `<img src="${att.uri}" class="viewer-attachment-image" />` : ''
+    ).join('');
+    MySwal.fire({
+      title: `<strong>${note.title}</strong>`,
+      html: `
+        <div class="note-viewer-content">
+          <p class="note-viewer-subtitle"><strong>Topic:</strong> ${note.topic || 'N/A'}</p>
+          <p class="note-viewer-subtitle"><strong>Date:</strong> ${note.noteDate || 'N/A'}</p>
+          <hr/>
+          <div class="note-viewer-body">${note.content}</div>
+          ${attachmentsHtml ? '<hr/><h4 class="attachment-title">Attachments</h4>' + attachmentsHtml : ''}
+        </div>
+      `,
+      confirmButtonText: 'Close',
+      customClass: { popup: 'note-viewer-popup' }
     });
   };
 
@@ -175,7 +199,7 @@ function PersonalNoteItems() {
       <div className="list-container">
         {filteredNotes.length > 0 ? filteredNotes.map((note) => (
           <div key={note.id} className="list-item-wrapper">
-            <div className="list-item" onClick={() => handleOpenNoteForm(note)}>
+            <div className="list-item" onClick={() => handleViewNote(note)}>
               <div>
                 <p className="note-title">{note.title}</p>
                 <p className="note-subtitle">Topic: {note.topic || 'N/A'} | Date: {note.noteDate || 'N/A'}</p>

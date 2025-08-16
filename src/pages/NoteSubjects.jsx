@@ -8,30 +8,38 @@ import Swal from 'sweetalert2';
 import withReactContent from 'sweetalert2-react-content';
 
 const MySwal = withReactContent(Swal);
+const SUBJECTS_CACHE_KEY = 'mathmate-cache-note-subjects';
 
 function NoteSubjects() {
-  const [subjects, setSubjects] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [subjects, setSubjects] = useState(() => JSON.parse(localStorage.getItem(SUBJECTS_CACHE_KEY)) || []);
+  const [isLoading, setIsLoading] = useState(subjects.length === 0);
   const { currentUser } = useAuth();
 
-  const fetchSubjects = async () => {
-    setIsLoading(true);
-    try {
-      const querySnapshot = await getDocs(collection(db, "official_notes"));
-      const subs = querySnapshot.docs.map(doc => ({
-        id: doc.id,
-        name: doc.data().name
-      })).sort((a, b) => a.name.localeCompare(b.name));
-      setSubjects(subs);
-    } catch (error) {
-      console.error("Error fetching subjects: ", error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   useEffect(() => {
-    fetchSubjects();
+    const fetchSubjects = async () => {
+      try {
+        const querySnapshot = await getDocs(collection(db, "official_notes"));
+        const freshSubs = querySnapshot.docs.map(doc => ({
+          id: doc.id,
+          name: doc.data().name
+        })).sort((a, b) => a.name.localeCompare(b.name));
+        
+        if (JSON.stringify(freshSubs) !== JSON.stringify(subjects)) {
+          setSubjects(freshSubs);
+          localStorage.setItem(SUBJECTS_CACHE_KEY, JSON.stringify(freshSubs));
+        }
+      } catch (error) {
+        console.error("Could not fetch fresh subjects (running in offline mode): ", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    if (navigator.onLine) {
+        fetchSubjects();
+    } else {
+        setIsLoading(false);
+    }
   }, []);
 
   const handleAddSubject = () => {
@@ -80,7 +88,6 @@ function NoteSubjects() {
       if (result.isConfirmed) {
         const subjectRef = doc(db, 'official_notes', sub.id);
         await deleteDoc(subjectRef);
-        // Note: This only deletes the subject doc, not subcollections. A Cloud Function is needed for full cleanup.
         fetchSubjects();
         Swal.fire('Deleted!', 'The subject has been deleted.', 'success');
       }
@@ -100,7 +107,7 @@ function NoteSubjects() {
 
       {isLoading ? <p>Loading subjects...</p> : (
         <div className="list-container">
-          {subjects.map(subject => (
+          {subjects.length > 0 ? subjects.map(subject => (
             <div key={subject.id} className="list-item-wrapper">
               <Link to={`/notes/${subject.id}`} className="list-item">
                 <span>{subject.name}</span>
@@ -117,7 +124,7 @@ function NoteSubjects() {
                 </div>
               )}
             </div>
-          ))}
+          )) : <p className="empty-message">No subjects found. An admin can add one!</p>}
         </div>
       )}
     </div>

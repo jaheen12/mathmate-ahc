@@ -12,8 +12,10 @@ const MySwal = withReactContent(Swal);
 function NoteItems() {
   const { subjectId, chapterId } = useParams();
   const navigate = useNavigate();
-  const [notes, setNotes] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const ITEMS_CACHE_KEY = `mathmate-cache-note-items-${subjectId}-${chapterId}`;
+
+  const [notes, setNotes] = useState(() => JSON.parse(localStorage.getItem(ITEMS_CACHE_KEY)) || []);
+  const [isLoading, setIsLoading] = useState(notes.length === 0);
   const { currentUser } = useAuth();
   
   const [searchTerm, setSearchTerm] = useState('');
@@ -23,19 +25,30 @@ function NoteItems() {
 
   const fetchNotes = async () => {
     if (!subjectId || !chapterId) return;
-    setIsLoading(true);
+    if (notes.length === 0) setIsLoading(true);
     try {
       const notesRef = collection(db, `official_notes/${subjectId}/chapters/${chapterId}/notes`);
       const q = query(notesRef, orderBy('createdAt', 'desc'));
       const querySnapshot = await getDocs(q);
       const noteItems = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      setNotes(noteItems);
-    } catch (error) { console.error("Error fetching notes: ", error); }
-    finally { setIsLoading(false); }
+      
+      if (JSON.stringify(noteItems) !== JSON.stringify(notes)) {
+        setNotes(noteItems);
+        localStorage.setItem(ITEMS_CACHE_KEY, JSON.stringify(noteItems));
+      }
+    } catch (error) { 
+      console.error("Error fetching notes (might be offline): ", error);
+    } finally { 
+      setIsLoading(false);
+    }
   };
 
   useEffect(() => {
-    fetchNotes();
+    if (navigator.onLine) {
+      fetchNotes();
+    } else {
+      setIsLoading(false);
+    }
   }, [subjectId, chapterId]);
 
   const filteredAndSortedNotes = useMemo(() => {
@@ -52,11 +65,10 @@ function NoteItems() {
         } else if (sortBy === 'noteDate') {
           valA = new Date(a.noteDate).getTime() || 0;
           valB = new Date(b.noteDate).getTime() || 0;
-        } else { // topic
+        } else {
           valA = (a.topic || '').toLowerCase();
           valB = (b.topic || '').toLowerCase();
         }
-
         if (sortOrder === 'asc') {
           return valA < valB ? -1 : (valA > valB ? 1 : 0);
         } else {
@@ -129,6 +141,22 @@ function NoteItems() {
     setIsSortMenuOpen(false);
   };
 
+  const handleViewNote = (note) => {
+    MySwal.fire({
+      title: `<strong>${note.title}</strong>`,
+      html: `
+        <div class="note-viewer-content">
+          <p class="note-viewer-subtitle"><strong>Topic:</strong> ${note.topic || 'N/A'}</p>
+          <p class="note-viewer-subtitle"><strong>Date:</strong> ${note.noteDate || 'N/A'}</p>
+          <hr/>
+          <div class="note-viewer-body">${note.content}</div>
+        </div>
+      `,
+      confirmButtonText: 'Close',
+      customClass: { popup: 'note-viewer-popup' }
+    });
+  };
+
   return (
     <div className="page-container">
       <div className="page-header-row">
@@ -138,19 +166,12 @@ function NoteItems() {
             <button className="page-action-button" onClick={() => handleOpenNoteForm()}><Plus size={24} /></button>
         )}
       </div>
-
       <div className="note-controls">
         <div className="search-wrapper">
             <Search size={20} className="search-icon" />
-            <input 
-                type="text" 
-                placeholder="Search notes..." 
-                className="search-bar"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-            />
+            <input type="text" placeholder="Search notes..." className="search-bar"
+                value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
         </div>
-        
         <div className="sort-menu-container">
           <button className="sort-button" onClick={() => setIsSortMenuOpen(!isSortMenuOpen)}>
             <ArrowDownUp size={16} />
@@ -176,12 +197,11 @@ function NoteItems() {
           </div>
         </div>
       </div>
-      
       {isLoading ? <p>Loading notes...</p> : (
         <div className="list-container">
           {filteredAndSortedNotes.length > 0 ? filteredAndSortedNotes.map((note) => (
             <div key={note.id} className="list-item-wrapper">
-                <div className="list-item">
+                <div className="list-item" onClick={() => handleViewNote(note)}>
                     <div>
                         <p className="note-title">{note.title}</p>
                         <p className="note-subtitle">Topic: {note.topic || 'N/A'} | Date: {note.noteDate || 'N/A'}</p>
