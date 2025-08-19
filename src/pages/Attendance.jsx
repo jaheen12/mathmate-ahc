@@ -8,12 +8,11 @@ import withReactContent from 'sweetalert2-react-content';
 import { Edit } from 'lucide-react';
 
 const MySwal = withReactContent(Swal);
+const COURSES_CACHE_KEY = 'mathmate-cache-courses';
 
-// Helper function to manage local attendance data
 const getLocalAttendanceData = (courses) => {
   const storedData = localStorage.getItem('mathmate-attendance');
   let attendance = storedData ? JSON.parse(storedData) : {};
-  // Ensure every official course has an entry in the local data
   courses.forEach(course => {
     if (!attendance[course]) {
       attendance[course] = { attended: 0, missed: 0, lastAction: null };
@@ -23,34 +22,40 @@ const getLocalAttendanceData = (courses) => {
 };
 
 function Attendance() {
-  const [courses, setCourses] = useState([]);
+  const [courses, setCourses] = useState(() => JSON.parse(localStorage.getItem(COURSES_CACHE_KEY)) || []);
   const [attendanceData, setAttendanceData] = useState({});
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(courses.length === 0);
   const { currentUser } = useAuth();
 
-  const fetchCourseList = async () => {
-    setIsLoading(true);
-    try {
-      const coursesRef = doc(db, 'courses', 'main-list');
-      const docSnap = await getDoc(coursesRef);
-      if (docSnap.exists()) {
-        const courseList = docSnap.data().list;
-        setCourses(courseList);
-        // Initialize local attendance data based on the fetched course list
-        setAttendanceData(getLocalAttendanceData(courseList));
+  useEffect(() => {
+    const fetchCourseList = async () => {
+      try {
+        const coursesRef = doc(db, 'courses', 'main-list');
+        const docSnap = await getDoc(coursesRef);
+        if (docSnap.exists()) {
+          const courseList = docSnap.data().list;
+          if (JSON.stringify(courseList) !== JSON.stringify(courses)) {
+            setCourses(courseList);
+            localStorage.setItem(COURSES_CACHE_KEY, JSON.stringify(courseList));
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching course list (might be offline):", error);
+      } finally {
+        setIsLoading(false);
       }
-    } catch (error) {
-      console.error("Error fetching course list:", error);
-    } finally {
+    };
+    
+    // Initialize local attendance based on the current course list (from cache or initial state)
+    setAttendanceData(getLocalAttendanceData(courses));
+
+    if (navigator.onLine) {
+      fetchCourseList();
+    } else {
       setIsLoading(false);
     }
-  };
+  }, []); // Run only once
 
-  useEffect(() => {
-    fetchCourseList();
-  }, []);
-
-  // Save to local storage whenever attendanceData changes
   useEffect(() => {
     if (Object.keys(attendanceData).length > 0) {
       localStorage.setItem('mathmate-attendance', JSON.stringify(attendanceData));
@@ -60,12 +65,8 @@ function Attendance() {
   const handleEditCourses = () => {
     MySwal.fire({
       title: 'Edit Course List',
-      html: `
-        <p>Enter one course name per line.</p>
-        <textarea id="swal-courses" class="swal2-textarea">${courses.join('\n')}</textarea>
-      `,
-      confirmButtonText: 'Save List',
-      showCancelButton: true,
+      html: `<p>Enter one course name per line.</p><textarea id="swal-courses" class="swal2-textarea">${courses.join('\n')}</textarea>`,
+      confirmButtonText: 'Save List', showCancelButton: true,
       preConfirm: () => {
         const textarea = document.getElementById('swal-courses');
         return textarea.value.split('\n').map(line => line.trim()).filter(line => line);
@@ -77,7 +78,9 @@ function Attendance() {
           const coursesRef = doc(db, 'courses', 'main-list');
           await updateDoc(coursesRef, { list: newList });
           Swal.fire('Success!', 'The course list has been updated.', 'success');
-          fetchCourseList();
+          // Update state and cache immediately
+          setCourses(newList);
+          localStorage.setItem(COURSES_CACHE_KEY, JSON.stringify(newList));
         } catch (error) {
           Swal.fire('Error!', 'Could not update the list: ' + error.message, 'error');
         }
@@ -85,57 +88,10 @@ function Attendance() {
     });
   };
 
-  const showConfirmation = (title, text, action) => {
-    MySwal.fire({
-      title, text, icon: 'question', showCancelButton: true,
-      confirmButtonText: 'Yes, mark it!', cancelButtonText: 'No, cancel',
-    }).then(result => {
-      if (result.isConfirmed) {
-        action();
-        Swal.fire('Marked!', 'Your attendance has been updated.', 'success');
-      }
-    });
-  };
-  
-  const handleAttend = (courseName) => {
-    showConfirmation('Mark as Attended?', `Are you sure for ${courseName}?`, () => {
-      setAttendanceData(prevData => ({ ...prevData, [courseName]: { ...prevData[courseName], attended: prevData[courseName].attended + 1, lastAction: 'attended' } }));
-    });
-  };
-
-  const handleMiss = (courseName) => {
-    showConfirmation('Mark as Missed?', `Are you sure you missed ${courseName}?`, () => {
-      setAttendanceData(prevData => ({ ...prevData, [courseName]: { ...prevData[courseName], missed: prevData[courseName].missed + 1, lastAction: 'missed' } }));
-    });
-  };
-
-  // --- THIS IS THE CORRECTED UNDO FUNCTION ---
-  const handleUndo = (courseName) => {
-    setAttendanceData(currentData => {
-      const lastAction = currentData[courseName]?.lastAction;
-
-      if (!lastAction) {
-        return currentData; // Return state unchanged if no action to undo
-      }
-
-      const newData = { ...currentData };
-      const courseData = { ...newData[courseName] };
-
-      if (lastAction === 'attended') {
-        courseData.attended -= 1;
-      } else if (lastAction === 'missed') {
-        courseData.missed -= 1;
-      }
-      
-      courseData.lastAction = null; // Clear the last action
-      newData[courseName] = courseData;
-
-      return newData;
-    });
-
-    Swal.fire('Undone!', 'The last action has been reversed.', 'info');
-  };
-  // ---------------------------------------------
+  const showConfirmation = (title, text, action) => { MySwal.fire({ title, text, icon: 'question', showCancelButton: true, confirmButtonText: 'Yes, mark it!', cancelButtonText: 'No, cancel' }).then(result => { if (result.isConfirmed) { action(); Swal.fire('Marked!', 'Your attendance has been updated.', 'success'); } }); };
+  const handleAttend = (courseName) => { showConfirmation('Mark as Attended?', `Are you sure for ${courseName}?`, () => { setAttendanceData(prevData => ({ ...prevData, [courseName]: { ...prevData[courseName], attended: prevData[courseName].attended + 1, lastAction: 'attended' } })); }); };
+  const handleMiss = (courseName) => { showConfirmation('Mark as Missed?', `Are you sure you missed ${courseName}?`, () => { setAttendanceData(prevData => ({ ...prevData, [courseName]: { ...prevData[courseName], missed: prevData[courseName].missed + 1, lastAction: 'missed' } })); }); };
+  const handleUndo = (courseName) => { setAttendanceData(currentData => { const lastAction = currentData[courseName]?.lastAction; if (!lastAction) { return currentData; } const newData = { ...currentData }; const courseData = { ...newData[courseName] }; if (lastAction === 'attended') { courseData.attended -= 1; } else if (lastAction === 'missed') { courseData.missed -= 1; } courseData.lastAction = null; newData[courseName] = courseData; return newData; }); Swal.fire('Undone!', 'The last action has been reversed.', 'info'); };
 
   return (
     <div className="page-container">
@@ -147,15 +103,13 @@ function Attendance() {
           </button>
         )}
       </div>
-      {isLoading ? (
-        <p>Loading course list...</p>
-      ) : (
+      {isLoading ? <p>Loading course list...</p> : (
         <div>
           {courses.map(courseName => (
             <AttendanceCard
               key={courseName}
               courseName={courseName}
-              stats={attendanceData[courseName] || { attended: 0, missed: 0, lastAction: null }}
+              stats={attendanceData[courseName] || { attended: 0, missed: 0 }}
               onAttend={handleAttend}
               onMiss={handleMiss}
               onUndo={handleUndo}

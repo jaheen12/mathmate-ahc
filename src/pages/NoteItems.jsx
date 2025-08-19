@@ -25,7 +25,6 @@ function NoteItems() {
 
   const fetchNotes = async () => {
     if (!subjectId || !chapterId) return;
-    if (notes.length === 0) setIsLoading(true);
     try {
       const notesRef = collection(db, `official_notes/${subjectId}/chapters/${chapterId}/notes`);
       const q = query(notesRef, orderBy('createdAt', 'desc'));
@@ -44,6 +43,7 @@ function NoteItems() {
   };
 
   useEffect(() => {
+    setIsLoading(notes.length === 0);
     if (navigator.onLine) {
       fetchNotes();
     } else {
@@ -197,6 +197,7 @@ function NoteItems() {
           </div>
         </div>
       </div>
+      
       {isLoading ? <p>Loading notes...</p> : (
         <div className="list-container">
           {filteredAndSortedNotes.length > 0 ? filteredAndSortedNotes.map((note) => (

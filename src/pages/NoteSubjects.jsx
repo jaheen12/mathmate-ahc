@@ -15,30 +15,34 @@ function NoteSubjects() {
   const [isLoading, setIsLoading] = useState(subjects.length === 0);
   const { currentUser } = useAuth();
 
-  useEffect(() => {
-    const fetchSubjects = async () => {
-      try {
-        const querySnapshot = await getDocs(collection(db, "official_notes"));
-        const freshSubs = querySnapshot.docs.map(doc => ({
-          id: doc.id,
-          name: doc.data().name
-        })).sort((a, b) => a.name.localeCompare(b.name));
-        
-        if (JSON.stringify(freshSubs) !== JSON.stringify(subjects)) {
-          setSubjects(freshSubs);
-          localStorage.setItem(SUBJECTS_CACHE_KEY, JSON.stringify(freshSubs));
-        }
-      } catch (error) {
-        console.error("Could not fetch fresh subjects (running in offline mode): ", error);
-      } finally {
-        setIsLoading(false);
+  const fetchSubjects = async () => {
+    try {
+      const querySnapshot = await getDocs(collection(db, "official_notes"));
+      const freshSubs = querySnapshot.docs.map(doc => ({
+        id: doc.id,
+        name: doc.data().name
+      })).sort((a, b) => a.name.localeCompare(b.name));
+      
+      // Only update state and cache if the data has actually changed
+      if (JSON.stringify(freshSubs) !== JSON.stringify(subjects)) {
+        setSubjects(freshSubs);
+        localStorage.setItem(SUBJECTS_CACHE_KEY, JSON.stringify(freshSubs));
       }
-    };
+    } catch (error) {
+      console.error("Could not fetch fresh subjects (running in offline mode): ", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    // Set initial loading state based on cache
+    setIsLoading(subjects.length === 0);
     
     if (navigator.onLine) {
-        fetchSubjects();
+      fetchSubjects();
     } else {
-        setIsLoading(false);
+      setIsLoading(false); // If we're offline, we're done loading immediately.
     }
   }, []);
 
@@ -54,7 +58,7 @@ function NoteSubjects() {
         const subjectId = result.value.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
         const subjectRef = doc(db, 'official_notes', subjectId);
         await setDoc(subjectRef, { name: result.value });
-        fetchSubjects();
+        fetchSubjects(); // Re-fetch from cloud to update cache
         Swal.fire('Created!', 'The new subject has been added.', 'success');
       }
     });
@@ -70,8 +74,8 @@ function NoteSubjects() {
         if(result.isConfirmed && result.value) {
             const subjectRef = doc(db, 'official_notes', sub.id);
             await setDoc(subjectRef, { name: result.value });
-            fetchSubjects();
-            Swal.fire('Renamed!', 'The subject name has been updated.', 'success');
+            fetchSubjects(); // Re-fetch from cloud to update cache
+            Swal.fire('Renamed!', 'The category name has been updated.', 'success');
         }
     });
   };
@@ -88,7 +92,7 @@ function NoteSubjects() {
       if (result.isConfirmed) {
         const subjectRef = doc(db, 'official_notes', sub.id);
         await deleteDoc(subjectRef);
-        fetchSubjects();
+        fetchSubjects(); // Re-fetch from cloud to update cache
         Swal.fire('Deleted!', 'The subject has been deleted.', 'success');
       }
     });

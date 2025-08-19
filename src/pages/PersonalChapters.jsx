@@ -7,16 +7,15 @@ import { collection, getDocs, doc, getDoc } from 'firebase/firestore';
 function PersonalChapters() {
   const { subjectId } = useParams();
   const navigate = useNavigate();
-  const CHAPTERS_CACHE_KEY = `mathmate-cache-personal-chapters-${subjectId}`;
+  const CHAPTERS_CACHE_KEY = `mathmate-cache-note-chapters-${subjectId}`;
 
   const [chapters, setChapters] = useState(() => JSON.parse(localStorage.getItem(CHAPTERS_CACHE_KEY)) || []);
   const [subjectName, setSubjectName] = useState(subjectId);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(chapters.length === 0);
 
   useEffect(() => {
     const fetchChapters = async () => {
       if (!subjectId) return;
-      if (chapters.length === 0) setIsLoading(true);
       try {
         const subjectRef = doc(db, 'official_notes', subjectId);
         const subjectSnap = await getDoc(subjectRef);
@@ -30,15 +29,23 @@ function PersonalChapters() {
           id: doc.id,
           name: doc.data().name
         })).sort((a,b) => a.name.localeCompare(b.name));
-        setChapters(freshChaps);
-        localStorage.setItem(CHAPTERS_CACHE_KEY, JSON.stringify(freshChaps));
+        
+        if (JSON.stringify(freshChaps) !== JSON.stringify(chapters)) {
+          setChapters(freshChaps);
+          localStorage.setItem(CHAPTERS_CACHE_KEY, JSON.stringify(freshChaps));
+        }
       } catch (error) {
         console.error("Error fetching chapters (might be offline): ", error);
       } finally {
         setIsLoading(false);
       }
     };
-    fetchChapters();
+
+    if (navigator.onLine) {
+      fetchChapters();
+    } else {
+      setIsLoading(false);
+    }
   }, [subjectId]);
 
   return (
@@ -48,7 +55,7 @@ function PersonalChapters() {
         <h1 className="page-title">{subjectName}</h1>
       </div>
 
-      {isLoading && chapters.length === 0 ? <p>Loading chapters...</p> : (
+      {isLoading ? <p>Loading chapters...</p> : (
         <div className="list-container">
           {chapters.map(chapter => (
             <Link to={`/notes/personal/${subjectId}/${chapter.id}`} key={chapter.id} className="list-item">

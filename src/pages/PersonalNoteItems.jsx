@@ -6,6 +6,7 @@ import Swal from 'sweetalert2';
 import withReactContent from 'sweetalert2-react-content';
 import { Camera, CameraResultType, CameraSource } from '@capacitor/camera';
 import { Filesystem, Directory } from '@capacitor/filesystem';
+import { Capacitor } from '@capacitor/core';
 
 const MySwal = withReactContent(Swal);
 const PERSONAL_NOTES_DB_KEY = 'mathmate-personal-notes-db';
@@ -53,13 +54,6 @@ function PersonalNoteItems() {
       if (result.isConfirmed) {
         const db = getInitialDb();
         let chapterNotes = db[chapterId] || [];
-        const noteToDelete = chapterNotes.find(n => n.id === noteId);
-        // Future improvement: Delete files from filesystem
-        // if (noteToDelete && noteToDelete.attachments) {
-        //   noteToDelete.attachments.forEach(att => {
-        //     Filesystem.deleteFile({ path: att.uri, directory: Directory.Data });
-        //   });
-        // }
         const updatedNotes = chapterNotes.filter(n => n.id !== noteId);
         db[chapterId] = updatedNotes;
         saveDb(db);
@@ -70,7 +64,22 @@ function PersonalNoteItems() {
   };
 
   const saveFile = async (photo) => {
-    const base64Data = photo.base64String;
+    const readAsBase64 = async (photo) => {
+      if (Capacitor.isNativePlatform()) {
+        const file = await Filesystem.readFile({ path: photo.path });
+        return `data:image/jpeg;base64,${file.data}`;
+      } else {
+        const response = await fetch(photo.webPath);
+        const blob = await response.blob();
+        return new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onerror = reject;
+          reader.onload = () => { resolve(reader.result); };
+          reader.readAsDataURL(blob);
+        });
+      }
+    };
+    const base64Data = await readAsBase64(photo);
     const fileName = new Date().getTime() + '.jpeg';
     const savedFile = await Filesystem.writeFile({
       path: fileName,
@@ -85,21 +94,29 @@ function PersonalNoteItems() {
       const image = await Camera.getPhoto({
         quality: 90,
         allowEditing: false,
-        resultType: CameraResultType.Base64,
+        resultType: CameraResultType.Uri,
         source: CameraSource.Prompt
       });
       if (image) {
+        // Show a loading indicator in the modal
+        const attachmentList = document.getElementById('attachment-list');
+        if (attachmentList) {
+            attachmentList.innerHTML += '<p id="loading-photo">Saving photo...</p>';
+        }
+
         const savedImageUri = await saveFile(image);
         const newAttachment = { id: uuidv4(), type: 'image', uri: savedImageUri, name: 'Image' };
         const attachments = (note ? note.attachments : modalAttachments) || [];
         const updatedAttachments = [...attachments, newAttachment];
+        
+        // This is a crucial change to correctly update the attachments for the currently open modal
         setModalAttachments(updatedAttachments);
         handleOpenNoteForm(note, updatedAttachments);
       }
     } catch (error) {
-      console.error("Error attaching photo:", error);
+      console.error("CAPACITOR CAMERA ERROR:", JSON.stringify(error));
       if (error.message !== "User cancelled photos app") {
-        Swal.fire('Error', 'Could not attach photo. Please ensure app has permissions.', 'error');
+        Swal.fire('Error', 'Could not get photo. Please ensure app has permissions in your phone settings.', 'error');
       }
     }
   };
@@ -108,6 +125,7 @@ function PersonalNoteItems() {
     const isEditing = !!note;
     const currentAttachments = attachments !== undefined ? attachments : (note?.attachments || []);
     setModalAttachments(currentAttachments);
+
     MySwal.fire({
       title: isEditing ? 'Edit Personal Note' : 'Add Personal Note',
       html: `
@@ -130,7 +148,8 @@ function PersonalNoteItems() {
           </div>
         </div>
       `,
-      confirmButtonText: 'Save', showCancelButton: true,
+      confirmButtonText: 'Save',
+      showCancelButton: true,
       didOpen: () => {
         document.getElementById('attach-photo-btn').addEventListener('click', () => handleAttachPhoto(note));
       },
@@ -167,7 +186,7 @@ function PersonalNoteItems() {
           <p class="note-viewer-subtitle"><strong>Date:</strong> ${note.noteDate || 'N/A'}</p>
           <hr/>
           <div class="note-viewer-body">${note.content}</div>
-          ${attachmentsHtml ? '<hr/><h4 class="attachment-title">Attachments</h4>' + attachmentsHtml : ''}
+          ${attachmentsHtml ? `<hr/><h4 class="attachment-title">Attachments</h4><div class="viewer-attachment-list">${attachmentsHtml}</div>` : ''}
         </div>
       `,
       confirmButtonText: 'Close',

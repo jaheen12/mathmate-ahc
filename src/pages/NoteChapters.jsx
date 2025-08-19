@@ -19,11 +19,8 @@ function NoteChapters() {
   const [isLoading, setIsLoading] = useState(chapters.length === 0);
   const { currentUser } = useAuth();
 
-  // --- THE FIX IS HERE: Move fetchChapters outside of useEffect ---
   const fetchChapters = async () => {
     if (!subjectId) return;
-    // We only set loading to true on the very first fetch
-    if (chapters.length === 0) setIsLoading(true);
     try {
       const subjectRef = doc(db, 'official_notes', subjectId);
       const subjectSnap = await getDoc(subjectRef);
@@ -38,7 +35,6 @@ function NoteChapters() {
         name: doc.data().name
       })).sort((a,b) => a.name.localeCompare(b.name));
       
-      // Only update state if data has changed to prevent infinite loops
       if (JSON.stringify(freshChaps) !== JSON.stringify(chapters)) {
         setChapters(freshChaps);
         localStorage.setItem(CHAPTERS_CACHE_KEY, JSON.stringify(freshChaps));
@@ -51,7 +47,7 @@ function NoteChapters() {
   };
 
   useEffect(() => {
-    // useEffect now just calls the function
+    setIsLoading(chapters.length === 0);
     if (navigator.onLine) {
       fetchChapters();
     } else {
@@ -71,7 +67,7 @@ function NoteChapters() {
             const chapterId = result.value.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
             const chapterRef = doc(db, `official_notes/${subjectId}/chapters`, chapterId);
             await setDoc(chapterRef, { name: result.value });
-            fetchChapters(); // This will now work
+            fetchChapters();
             Swal.fire('Created!', 'The new chapter has been added.', 'success');
         }
     });
@@ -87,7 +83,7 @@ function NoteChapters() {
         if(result.isConfirmed && result.value) {
             const chapterRef = doc(db, `official_notes/${subjectId}/chapters`, chap.id);
             await updateDoc(chapterRef, { name: result.value });
-            fetchChapters(); // This will now work
+            fetchChapters();
             Swal.fire('Renamed!', 'The chapter name has been updated.', 'success');
         }
     });
@@ -105,7 +101,7 @@ function NoteChapters() {
         if(result.isConfirmed) {
             const chapterRef = doc(db, `official_notes/${subjectId}/chapters`, chap.id);
             await deleteDoc(chapterRef);
-            fetchChapters(); // This will now work
+            fetchChapters();
             Swal.fire('Deleted!', 'The chapter has been deleted.', 'success');
         }
     });
