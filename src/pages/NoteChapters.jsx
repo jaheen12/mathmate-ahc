@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
-import { ChevronRight, ArrowLeft, Plus, Pencil, Trash2 } from 'lucide-react';
+import { ChevronRight, ArrowLeft, Plus, Pencil, Trash2, DownloadCloud, Loader, CheckCircle } from 'lucide-react';
 import { db } from '../firebaseConfig';
 import { collection, getDocs, doc, getDoc, setDoc, deleteDoc, updateDoc } from 'firebase/firestore';
 import { useAuth } from '../AuthContext';
 import Swal from 'sweetalert2';
 import withReactContent from 'sweetalert2-react-content';
+import { downloadChapter, getDownloadStatus } from '../utils/downloadManager';
 
 const MySwal = withReactContent(Swal);
 
@@ -18,6 +19,7 @@ function NoteChapters() {
   const [subjectName, setSubjectName] = useState(subjectId);
   const [isLoading, setIsLoading] = useState(chapters.length === 0);
   const { currentUser } = useAuth();
+  const [downloadStatus, setDownloadStatus] = useState(getDownloadStatus);
 
   const fetchChapters = async () => {
     if (!subjectId) return;
@@ -107,6 +109,14 @@ function NoteChapters() {
     });
   };
 
+  const handleDownload = (e, chapterId) => {
+    e.preventDefault();
+    e.stopPropagation();
+    downloadChapter(subjectId, chapterId, (newStatus) => {
+      setDownloadStatus({ ...newStatus });
+    });
+  };
+
   return (
     <div className="page-container">
       <div className="page-header-row">
@@ -118,20 +128,32 @@ function NoteChapters() {
       </div>
       {isLoading ? <p>Loading chapters...</p> : (
         <div className="list-container">
-          {chapters.length > 0 ? chapters.map(chapter => (
-            <div key={chapter.id} className="list-item-wrapper">
-                <Link to={`/notes/${subjectId}/${chapter.id}`} className="list-item">
-                    <span>{chapter.name}</span>
-                    <ChevronRight />
-                </Link>
-                {currentUser && (
-                    <div className="list-item-actions">
-                        <button className="action-button edit-button" onClick={() => handleEditChapter(chapter)}><Pencil size={18} /></button>
-                        <button className="action-button delete-button" onClick={() => handleDeleteChapter(chapter)}><Trash2 size={18} /></button>
-                    </div>
-                )}
-            </div>
-          )) : <p className="empty-message">No chapters yet. Add one!</p>}
+          {chapters.length > 0 ? chapters.map(chapter => {
+            const status = downloadStatus[`${subjectId}_${chapter.id}`];
+            return (
+              <div key={chapter.id} className="list-item-wrapper">
+                  <Link to={`/notes/${subjectId}/${chapter.id}`} className="list-item">
+                      <span>{chapter.name}</span>
+                      <div className="list-item-right-content">
+                        {status === 'downloading' && <Loader className="status-icon spinning" size={20} />}
+                        {status === 'downloaded' && <CheckCircle className="status-icon downloaded" size={20} />}
+                        {!status && navigator.onLine && (
+                          <button className="download-button" onClick={(e) => handleDownload(e, chapter.id)}>
+                            <DownloadCloud size={20} />
+                          </button>
+                        )}
+                        <ChevronRight />
+                      </div>
+                  </Link>
+                  {currentUser && (
+                      <div className="list-item-actions">
+                          <button className="action-button edit-button" onClick={() => handleEditChapter(chapter)}><Pencil size={18} /></button>
+                          <button className="action-button delete-button" onClick={() => handleDeleteChapter(chapter)}><Trash2 size={18} /></button>
+                      </div>
+                  )}
+              </div>
+            );
+          }) : <p className="empty-message">No chapters yet. Add one!</p>}
         </div>
       )}
     </div>
