@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import { ArrowLeft, Plus, Pencil, Trash2, Search, ArrowDownUp, Check } from 'lucide-react';
 import { db } from '../firebaseConfig';
 import { collection, getDocs, doc, addDoc, updateDoc, deleteDoc, serverTimestamp, orderBy, query } from 'firebase/firestore';
@@ -141,22 +141,6 @@ function NoteItems() {
     setIsSortMenuOpen(false);
   };
 
-  const handleViewNote = (note) => {
-    MySwal.fire({
-      title: `<strong>${note.title}</strong>`,
-      html: `
-        <div class="note-viewer-content">
-          <p class="note-viewer-subtitle"><strong>Topic:</strong> ${note.topic || 'N/A'}</p>
-          <p class="note-viewer-subtitle"><strong>Date:</strong> ${note.noteDate || 'N/A'}</p>
-          <hr/>
-          <div class="note-viewer-body">${note.content}</div>
-        </div>
-      `,
-      confirmButtonText: 'Close',
-      customClass: { popup: 'note-viewer-popup' }
-    });
-  };
-
   return (
     <div className="page-container">
       <div className="page-header-row">
@@ -166,6 +150,7 @@ function NoteItems() {
             <button className="page-action-button" onClick={() => handleOpenNoteForm()}><Plus size={24} /></button>
         )}
       </div>
+
       <div className="note-controls">
         <div className="search-wrapper">
             <Search size={20} className="search-icon" />
@@ -201,8 +186,8 @@ function NoteItems() {
       {isLoading ? <p>Loading notes...</p> : (
         <div className="list-container">
           {filteredAndSortedNotes.length > 0 ? filteredAndSortedNotes.map((note) => (
-            <div key={note.id} className="list-item-wrapper">
-                <div className="list-item" onClick={() => handleViewNote(note)}>
+            <Link to={`/notes/${subjectId}/${chapterId}/${note.id}`} key={note.id} className="list-item-wrapper link-wrapper">
+                <div className="list-item">
                     <div>
                         <p className="note-title">{note.title}</p>
                         <p className="note-subtitle">Topic: {note.topic || 'N/A'} | Date: {note.noteDate || 'N/A'}</p>
@@ -210,11 +195,11 @@ function NoteItems() {
                 </div>
                 {currentUser && (
                     <div className="list-item-actions">
-                        <button className="action-button edit-button" onClick={() => handleOpenNoteForm(note)}><Pencil size={18} /></button>
-                        <button className="action-button delete-button" onClick={() => handleDeleteNote(note)}><Trash2 size={18} /></button>
+                        <button className="action-button edit-button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleOpenNoteForm(note); }}><Pencil size={18} /></button>
+                        <button className="action-button delete-button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDeleteNote(note); }}><Trash2 size={18} /></button>
                     </div>
                 )}
-            </div>
+            </Link>
           )) : <p className="empty-message">No notes found. Try changing your search or add a new note!</p>}
         </div>
       )}

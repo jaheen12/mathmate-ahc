@@ -290,3 +290,63 @@ body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'R
     margin-top: 0.5em;
 }
 
+/* --- Note Viewer Page Styling --- */
+.note-viewer-fullscreen {
+  width: 100%;
+  min-height: 100vh;
+  background-color: #fff;
+  box-sizing: border-box;
+}
+.viewer-header {
+  display: flex;
+  align-items: center;
+  padding: 10px;
+  background-color: #f8f9fa;
+  border-bottom: 1px solid #dee2e6;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+.back-button-viewer, .edit-button-viewer {
+  background: none;
+  border: none;
+  padding: 8px;
+  cursor: pointer;
+}
+.viewer-title-container {
+  flex-grow: 1;
+  text-align: center;
+}
+.viewer-title {
+  font-size: 18px;
+  margin: 0;
+}
+.viewer-subtitle {
+  font-size: 12px;
+  margin: 2px 0 0 0;
+  color: #6c757d;
+}
+.viewer-content {
+  padding: 16px;
+  line-height: 1.7;
+}
+.viewer-content h1, .viewer-content h2, .viewer-content h3 {
+  border-bottom: 1px solid #eee;
+  padding-bottom: 0.3em;
+}
+.viewer-content pre {
+  background-color: #f0f2f5;
+  padding: 1em;
+  border-radius: 8px;
+  overflow-x: auto;
+}
+.viewer-content code {
+  font-family: 'Courier New', Courier, monospace;
+}
+
+/* --- Wrapper for list items that are links --- */
+.link-wrapper {
+    text-decoration: none;
+    display: flex; /* This is important for the flex layout to work on the link */
+}
+
