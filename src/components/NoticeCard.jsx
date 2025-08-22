@@ -1,44 +1,36 @@
+// src/components/NoticeCard.jsx
 import React from 'react';
-import { Megaphone, Pencil, Trash2 } from 'lucide-react';
-import { useAuth } from '../AuthContext'; // We need this to show/hide admin buttons
+import { useAuth } from '../AuthContext';
+import { format } from 'date-fns'; // Import the date formatting function
+import { IoTrashOutline, IoCreateOutline } from 'react-icons/io5';
 
-// This component displays a single notice
-function NoticeCard({ notice, onEdit, onDelete }) {
-  const { currentUser } = useAuth(); // Check if admin is logged in
+const NoticeCard = ({ notice, onDelete, onEdit }) => { // onEdit will open the modal
+    const { currentUser } = useAuth();
 
-  // Format the timestamp from Firebase into a readable date
-  const formatDate = (timestamp) => {
-    if (!timestamp) return 'Just now';
-    return new Date(timestamp.seconds * 1000).toLocaleDateString('en-US', {
-      year: 'numeric', month: 'long', day: 'numeric'
-    });
-  };
-
-  return (
-    <div className={`notice-card ${notice.isImportant ? 'important' : ''}`}>
-      <div className="notice-header">
-        <div className="notice-title-container">
-          <Megaphone className="notice-icon" size={20} />
-          <h3 className="notice-title">{notice.title}</h3>
+    return (
+        <div className="bg-white p-4 rounded-lg shadow-md transition-shadow hover:shadow-lg">
+            <div className="flex justify-between items-start">
+                <h3 className="text-xl font-bold text-gray-800 mb-2">{notice.title}</h3>
+                {/* Display the formatted date */}
+                <p className="text-xs text-gray-500 whitespace-nowrap">
+                    {notice.createdAt ? format(notice.createdAt.toDate(), 'MMM dd, yyyy') : ''}
+                </p>
+            </div>
+            {/* Using whitespace-pre-wrap to respect line breaks in the notice content */}
+            <p className="text-gray-700 whitespace-pre-wrap">{notice.content}</p>
+            
+            {currentUser && (
+                <div className="flex justify-end gap-2 mt-4">
+                    <button onClick={() => onEdit(notice)} className="text-blue-500 hover:text-blue-700">
+                        <IoCreateOutline size={22} />
+                    </button>
+                    <button onClick={() => onDelete(notice.id)} className="text-red-500 hover:text-red-700">
+                        <IoTrashOutline size={22} />
+                    </button>
+                </div>
+            )}
         </div>
-        
-        {/* Admin buttons only show if logged in */}
-        {currentUser && (
-          <div className="notice-actions">
-            <button className="action-button edit-button" onClick={() => onEdit(notice)}>
-              <Pencil size={18} />
-            </button>
-            <button className="action-button delete-button" onClick={() => onDelete(notice.id)}>
-              <Trash2 size={18} />
-            </button>
-          </div>
-        )}
-      </div>
-      
-      <p className="notice-date">Posted on: {formatDate(notice.createdAt)}</p>
-      <p className="notice-content">{notice.content}</p>
-    </div>
-  );
-}
+    );
+};
 
 export default NoticeCard;

@@ -1,137 +1,73 @@
-import React, { useState, useEffect } from 'react';
-import { Bell, AlertTriangle, Star, Award } from 'lucide-react';
+// src/components/ScheduleView.jsx
+import React, { useMemo } from 'react';
 
-// --- NEW HELPER FUNCTIONS ---
-const getCurrentDayIndex = () => new Date().getDay(); // Sunday = 0, Monday = 1, etc.
+const ScheduleView = ({ scheduleDays }) => {
+    const daysOfWeek = ["Saturday", "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
 
-// Parses "9:45-10:30" into start and end minutes from midnight
-const parseTime = (timeStr) => {
-  if (!timeStr) return null;
-  const [start, end] = timeStr.split('-');
-  const [startHour, startMin] = start.trim().split(':').map(Number);
-  const startTimeInMinutes = startHour * 60 + startMin;
-  return { start: startTimeInMinutes, end: 0 }; // We only need the start time for now
-};
+    // The logic to find all unique time slots remains the same.
+    const timeSlots = useMemo(() => {
+        if (!scheduleDays) return [];
+        const allTimes = new Set();
+        Object.values(scheduleDays).forEach(dayClasses => {
+            dayClasses.forEach(classInfo => {
+                allTimes.add(classInfo.time);
+            });
+        });
+        return Array.from(allTimes).sort();
+    }, [scheduleDays]);
 
-// --- UPGRADED DAY COLUMN COMPONENT ---
-function DayColumn({ day, dayIndex, classes, isCurrentDay, isNextDay, personalReminders, onCardClick }) {
-  const [currentTimeInMinutes, setCurrentTimeInMinutes] = useState(new Date().getHours() * 60 + new Date().getMinutes());
+    const hasScheduleData = useMemo(() => {
+        return Object.values(scheduleDays).some(day => day.length > 0);
+    }, [scheduleDays]);
 
-  // This effect updates the current time every minute to keep the highlighting "live"
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setCurrentTimeInMinutes(new Date().getHours() * 60 + new Date().getMinutes());
-    }, 60000); // Update every 60 seconds
-    return () => clearInterval(timer);
-  }, []);
-  
-  // Determine the column's highlight class
-  let columnClass = 'day-column';
-  if (isCurrentDay) columnClass += ' current-day';
-  if (isNextDay) columnClass += ' next-day';
-
-  return (
-    <div className={columnClass}>
-      <div className="day-header">{day}</div>
-      {classes && classes.length > 0 ? (
-        classes.map((classInfo, index) => {
-          const classTime = parseTime(classInfo.time);
-          const isCurrentClass = isCurrentDay && classTime && currentTimeInMinutes >= classTime.start && (classes[index+1] ? currentTimeInMinutes < parseTime(classes[index+1].time).start : true);
-          
-          // A unique ID for each class card for reminders
-          const classCardId = `${day.toLowerCase()}-${index}`;
-          const hasReminder = personalReminders[classCardId];
-
-          return (
-            <div 
-              key={index} 
-              className={`class-card ${isCurrentClass ? 'current-class' : ''}`}
-              onClick={() => onCardClick(classInfo, classCardId)}
-            >
-              {/* --- NEW: STATUS TAGS --- */}
-              {classInfo.status && (
-                <div className={`status-tag status-${classInfo.status.toLowerCase().replace(' ', '-')}`}>
-                  {classInfo.status === 'Canceled' && <AlertTriangle size={14} />}
-                  {classInfo.status === 'Exam' && <Star size={14} />}
-                  {classInfo.status === 'Extra Class' && <Award size={14} />}
-                  <span>{classInfo.status}</span>
-                </div>
-              )}
-
-              {classInfo.time && <p className={`class-time ${classInfo.status === 'Canceled' ? 'canceled-text' : ''}`}>{classInfo.time}</p>}
-              {classInfo.name && <p className={`class-name ${classInfo.status === 'Canceled' ? 'canceled-text' : ''}`}>{classInfo.name}</p>}
-              {classInfo.topic && <p className={`class-topic ${classInfo.status === 'Canceled' ? 'canceled-text' : ''}`}>{classInfo.topic}</p>}
-              {classInfo.teacher && <p className={`class-teacher ${classInfo.status === 'Canceled' ? 'canceled-text' : ''}`}>{classInfo.teacher}</p>}
-              
-              {/* --- NEW: REMINDER ICON --- */}
-              {hasReminder && (
-                <div className="reminder-indicator">
-                  <Bell size={14} /> <span>Reminder set</span>
-                </div>
-              )}
+    if (!hasScheduleData) {
+        return (
+            <div className="text-center mt-10">
+                <h2 className="text-2xl font-semibold text-gray-700">No Schedule Found</h2>
+                <p className="text-gray-500 mt-2">The schedule is empty. An admin can add classes in the editor.</p>
             </div>
-          );
-        })
-      ) : (
-        <div className="no-class-card"><p>No Classes</p></div>
-      )}
-    </div>
-  );
-}
-
-// --- UPGRADED MAIN SCHEDULE VIEW COMPONENT ---
-function ScheduleView({ scheduleData, onCardClick }) {
-  const [lastClassTime, setLastClassTime] = useState(0);
-  const [currentTimeInMinutes, setCurrentTimeInMinutes] = useState(new Date().getHours() * 60 + new Date().getMinutes());
-  const personalReminders = JSON.parse(localStorage.getItem('mathmate-reminders')) || {};
-  
-  const daysOfWeek = ['sun', 'mon', 'tue', 'wed', 'thu'];
-  const currentDayIndex = getCurrentDayIndex();
-
-  useEffect(() => {
-    // Calculate the end time of the last class for the current day
-    const todayClasses = scheduleData[daysOfWeek[currentDayIndex]];
-    if (todayClasses && todayClasses.length > 0) {
-      const lastClass = todayClasses[todayClasses.length - 1];
-      const lastTime = parseTime(lastClass.time);
-      // Let's assume a class is 45 mins long to find the end time
-      if(lastTime) setLastClassTime(lastTime.start + 45); 
+        );
     }
-     const timer = setInterval(() => {
-      setCurrentTimeInMinutes(new Date().getHours() * 60 + new Date().getMinutes());
-    }, 60000);
-    return () => clearInterval(timer);
-  }, [scheduleData, currentDayIndex]);
 
-  const findNextDayIndex = () => {
-    for (let i = 1; i < 7; i++) {
-      const nextDayIdx = (currentDayIndex + i) % 7;
-      if (scheduleData[daysOfWeek[nextDayIdx]] && scheduleData[daysOfWeek[nextDayIdx]].length > 0) {
-        return nextDayIdx;
-      }
-    }
-    return -1; // No future classes
-  };
-
-  const isAfterClasses = currentTimeInMinutes > lastClassTime;
-  const nextDayIndex = isAfterClasses ? findNextDayIndex() : -1;
-
-  return (
-    <div className="schedule-grid">
-      {daysOfWeek.map((day, index) => (
-        <DayColumn 
-          key={day} 
-          day={day.charAt(0).toUpperCase() + day.slice(1)} 
-          dayIndex={index}
-          classes={scheduleData[day]}
-          isCurrentDay={index === currentDayIndex}
-          isNextDay={index === nextDayIndex}
-          personalReminders={personalReminders}
-          onCardClick={onCardClick}
-        />
-      ))}
-    </div>
-  );
-}
+    return (
+        <div className="bg-white p-4 rounded-lg shadow-md overflow-x-auto">
+            <table className="w-full min-w-[700px] border-collapse text-center">
+                <thead>
+                    <tr className="bg-gray-100">
+                        {/* --- TRANSPOSED: Header row is now Time Slots --- */}
+                        <th className="p-3 font-semibold text-gray-600 border">Day</th>
+                        {timeSlots.map(time => (
+                            <th key={time} className="p-3 font-semibold text-gray-600 border">{time}</th>
+                        ))}
+                    </tr>
+                </thead>
+                <tbody>
+                    {/* --- TRANSPOSED: Body rows are now Days of the Week --- */}
+                    {daysOfWeek.map(day => (
+                        <tr key={day} className="even:bg-gray-50">
+                            <td className="p-3 font-medium text-gray-700 border">{day}</td>
+                            {timeSlots.map(time => {
+                                // The logic to find the class remains the same
+                                const classInfo = (scheduleDays[day] || []).find(c => c.time === time);
+                                return (
+                                    <td key={time} className="p-3 border">
+                                        {classInfo ? (
+                                            <div>
+                                                <p className="font-semibold text-blue-700">{classInfo.subject}</p>
+                                                <p className="text-sm text-gray-500">{classInfo.teacher}</p>
+                                            </div>
+                                        ) : (
+                                            <span className="text-gray-400">-</span>
+                                        )}
+                                    </td>
+                                );
+                            })}
+                        </tr>
+                    ))}
+                </tbody>
+            </table>
+        </div>
+    );
+};
 
 export default ScheduleView;

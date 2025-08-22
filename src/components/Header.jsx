@@ -1,15 +1,24 @@
 import React from 'react';
-import { Menu } from 'lucide-react';
+import { FaBars } from 'react-icons/fa';
 
-function Header({ title, onMenuClick }) {
+// The header now accepts a 'title' prop
+const Header = ({ toggleSidebar, title }) => {
   return (
-    <header className="app-header">
-      <button onClick={onMenuClick} className="menu-button">
-        <Menu size={28} />
+    <header className="sticky top-0 bg-white shadow-md p-4 flex items-center z-10">
+      <button 
+        onClick={toggleSidebar} 
+        className="text-gray-500 mr-4 md:hidden"
+        aria-label="Open sidebar"
+      >
+        <FaBars size={24} />
       </button>
-      <h1 className="header-title">{title}</h1>
+
+      {/* Display the title passed in, or default to "MathMate AHC" */}
+      <h1 className="text-xl font-semibold text-gray-800">
+        {title || 'MathMate AHC'}
+      </h1>
     </header>
   );
-}
+};
 
 export default Header;

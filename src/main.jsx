@@ -1,23 +1,24 @@
-// src/main.jsx
-// Add this line at the top of src/main.jsx
-import 'react-loading-skeleton/dist/skeleton.css'
-
-// ... rest of your main.jsx file
-import React from 'react'
-import ReactDOM from 'react-dom/client'
-// ...
-import { Capacitor } from '@capacitor/core';
-window.Capacitor = Capacitor;
 import React from 'react';
 import ReactDOM from 'react-dom/client';
+import { BrowserRouter } from 'react-router-dom';
 import App from './App.jsx';
+// Corrected path - removed the non-existent 'contexts' folder
+import { AuthProvider } from './AuthContext.jsx'; 
+import { ToastContainer } from 'react-toastify';
+
+import 'react-toastify/dist/ReactToastify.css';
+import 'react-loading-skeleton/dist/skeleton.css';
 import './index.css';
-import { AuthProvider } from './AuthContext.jsx'; // Import the AuthProvider
+import './App.css';
+
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
-    <AuthProvider> {/* Wrap the App component */}
-      <App />
-    </AuthProvider>
-  </React.StrictMode>,
+    <BrowserRouter>
+      <AuthProvider>
+        <App />
+        <ToastContainer />
+      </AuthProvider>
+    </BrowserRouter>
+  </React.StrictMode>
 );

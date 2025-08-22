@@ -4,9 +4,10 @@ import { db } from '../firebaseConfig';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import { toast } from 'react-toastify';
 import NoteEditor from '../components/NoteEditor';
-import { useAuth } from '../contexts/AuthContext';
+// --- CORRECTED LINE BELOW ---
+import { useAuth } from '../AuthContext'; 
 import { IoArrowBack } from "react-icons/io5";
-import Skeleton from 'react-loading-skeleton'; // Import the skeleton component
+import Skeleton from 'react-loading-skeleton';
 
 const NoteViewer = () => {
     const { subjectId, chapterId, itemId } = useParams();
@@ -57,12 +58,9 @@ const NoteViewer = () => {
         ? `/personal-notes/${subjectId}/${chapterId}` 
         : `/notes/${subjectId}/${chapterId}`;
 
-    // --- Loading Skeleton for the Note Editor ---
     const EditorSkeleton = () => (
         <div>
-            {/* Skeleton for the editor toolbar */}
             <Skeleton height={40} style={{ marginBottom: '8px' }} /> 
-            {/* Skeleton for the text area */}
             <Skeleton height={300} /> 
         </div>
     );

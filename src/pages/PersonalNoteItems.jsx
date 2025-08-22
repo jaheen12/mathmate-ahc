@@ -1,26 +1,26 @@
 import React, { useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { useAuth } from '../contexts/AuthContext';
-import { useFirestoreCollection } from '../hooks/useFirestoreCollection'; // Import our hook
+// --- CORRECTED PATH on the line below ---
+import { useAuth } from '../AuthContext'; 
+import { useFirestoreCollection } from '../hooks/useFirestoreCollection';
 import { FaPlus } from "react-icons/fa";
 import { MdDelete } from "react-icons/md";
 import { IoArrowBack } from "react-icons/io5";
 import Skeleton from 'react-loading-skeleton';
 
+// ... rest of the file is the same ...
+
 const PersonalNoteItems = () => {
     const { subjectId, chapterId } = useParams();
     const navigate = useNavigate();
 
-    // --- Use the hook with the nested dynamic path ---
     const { data: items, loading, addItem, deleteItem } = useFirestoreCollection(['personal_notes', subjectId, 'chapters', chapterId, 'items']);
     
-    // --- UI-specific state ---
     const [newItemName, setNewItemName] = useState('');
     const [isAdding, setIsAdding] = useState(false);
     
     const { currentUser } = useAuth();
 
-    // --- Simple handlers that call the hook's functions ---
     const handleSaveItem = async () => {
         if (newItemName.trim() === '') return;
         await addItem({ name: newItemName });
@@ -32,7 +32,6 @@ const PersonalNoteItems = () => {
         await deleteItem(itemId);
     };
 
-    // --- Skeleton Component ---
     const ItemsSkeleton = () => (
         <div className="space-y-2">
             {Array(5).fill().map((_, index) => (

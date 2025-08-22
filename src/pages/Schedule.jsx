@@ -1,82 +1,66 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { db } from '../firebaseConfig';
-import { doc, getDoc } from 'firebase/firestore';
-import { toast } from 'react-toastify';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '../AuthContext';
+import Skeleton from 'react-loading-skeleton';
+import { IoCreateOutline, IoTimeOutline } from "react-icons/io5";
+import { useFirestoreDocument } from '../hooks/useFirestoreDocument';
 import ScheduleView from '../components/ScheduleView';
-import { IoArrowBack } from "react-icons/io5";
-import Skeleton from 'react-loading-skeleton'; // Import the skeleton component
+import TimeSlotsEditorModal from '../components/TimeSlotsEditorModal';
 
 const Schedule = () => {
-    const [scheduleData, setScheduleData] = useState(null);
-    const [loading, setLoading] = useState(true);
+    const { data: scheduleDoc, loading: scheduleLoading } = useFirestoreDocument(['schedules', 'first_year']);
+    const { data: timeSlotsDoc, loading: timeSlotsLoading, updateDocument: updateTimeSlots } = useFirestoreDocument(['time_slots', 'default_periods']);
+    
     const { currentUser } = useAuth();
+    const [isModalOpen, setIsModalOpen] = useState(false);
 
-    useEffect(() => {
-        const fetchSchedule = async () => {
-            setLoading(true);
-            try {
-                const scheduleDocRef = doc(db, "schedules", "first_year");
-                const docSnap = await getDoc(scheduleDocRef);
+    const scheduleDays = scheduleDoc?.days || {};
+    const timeSlots = timeSlotsDoc?.periods || [];
+    const loading = scheduleLoading || timeSlotsLoading;
 
-                if (docSnap.exists()) {
-                    setScheduleData(docSnap.data());
-                } else {
-                    setScheduleData({ days: {} }); 
-                    toast.info("No schedule has been set up yet.");
-                }
-            } catch (error) {
-                console.error("Error fetching schedule: ", error);
-                toast.error("Failed to load the schedule.");
-            } finally {
-                setLoading(false);
-            }
-        };
+    const handleSaveTimeSlots = (newTimeSlots) => {
+        // Sort the time slots before saving to maintain a consistent order
+        const sortedTimeSlots = newTimeSlots.sort();
+        updateTimeSlots({ periods: sortedTimeSlots });
+    };
 
-        fetchSchedule();
-    }, []);
-
-    // --- Loading Skeleton for the Schedule View ---
-    const ScheduleSkeleton = () => (
-        <div className="space-y-4">
-            {Array(3).fill().map((_, dayIndex) => (
-                <div key={dayIndex} className="p-4 border rounded shadow-sm">
-                    <Skeleton height={28} width="40%" style={{ marginBottom: '12px' }} />
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-                        <Skeleton height={20} />
-                        <Skeleton height={20} />
-                        <Skeleton height={20} />
-                    </div>
-                     <div className="grid grid-cols-1 md:grid-cols-3 gap-2 mt-2">
-                        <Skeleton height={20} />
-                        <Skeleton height={20} />
-                        <Skeleton height={20} />
-                    </div>
-                </div>
-            ))}
+    // This is the full, correct skeleton component
+    const SchedulePageSkeleton = () => (
+        <div className="bg-white p-4 rounded-lg shadow-md">
+            <Skeleton height={40} className="mb-2" />
+            <Skeleton height={200} />
         </div>
     );
 
     return (
-        <div className="container mx-auto p-4">
-            <div className="flex justify-between items-center mb-4">
-                <Link to="/profile" className="text-blue-500 hover:underline">
-                    <IoArrowBack size={24} />
-                </Link>
-                <h1 className="text-2xl font-bold">Class Schedule</h1>
-                {currentUser && (
-                    <Link to="/schedule-editor" className="bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-600">
-                        Edit
+        <div className="p-2">
+            {currentUser && (
+                <div className="flex flex-wrap justify-end gap-2 mb-4">
+                    <button 
+                        onClick={() => setIsModalOpen(true)}
+                        className="inline-flex items-center px-4 py-2 bg-gray-600 text-white font-semibold rounded-lg shadow-md hover:bg-gray-700 transition-colors"
+                    >
+                        <IoTimeOutline className="mr-2" />
+                        Edit Time Periods
+                    </button>
+                    <Link 
+                        to="/schedule-editor" 
+                        className="inline-flex items-center px-4 py-2 bg-blue-500 text-white font-semibold rounded-lg shadow-md hover:bg-blue-600 transition-colors"
+                    >
+                        <IoCreateOutline className="mr-2" />
+                        Edit Routine
                     </Link>
-                )}
-            </div>
-
-            {loading ? (
-                <ScheduleSkeleton />
-            ) : (
-                scheduleData && <ScheduleView scheduleData={scheduleData} />
+                </div>
             )}
+            
+            {loading ? <SchedulePageSkeleton /> : <ScheduleView scheduleDays={scheduleDays} />}
+
+            <TimeSlotsEditorModal 
+                isOpen={isModalOpen}
+                onClose={() => setIsModalOpen(false)}
+                initialTimeSlots={timeSlots}
+                onSave={handleSaveTimeSlots}
+            />
         </div>
     );
 };

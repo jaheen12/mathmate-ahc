@@ -1,15 +1,16 @@
 import React from 'react';
 
-// This is a reusable card component
-function Card({ title, children }) {
+// The component now accepts an 'icon' prop
+const Card = ({ title, description, icon }) => {
   return (
-    <div className="card">
-      <h2 className="card-title">{title}</h2>
-      <div className="card-content">
-        {children}
-      </div>
+    <div className="bg-white rounded-lg shadow-md p-4 flex flex-col items-center text-center hover:shadow-lg transition-shadow duration-200">
+      {/* Icon is displayed at the top */}
+      {icon && <div className="mb-3">{icon}</div>}
+      
+      <h3 className="text-lg font-semibold text-gray-800">{title}</h3>
+      <p className="text-sm text-gray-600 mt-1">{description}</p>
     </div>
   );
-}
+};
 
 export default Card;

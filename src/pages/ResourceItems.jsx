@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '../AuthContext';
 import { useFirestoreCollection } from '../hooks/useFirestoreCollection'; // Import our hook
 import { FaPlus } from "react-icons/fa";
 import { MdDelete } from "react-icons/md";
