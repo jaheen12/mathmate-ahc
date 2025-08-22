@@ -4,18 +4,23 @@ import { db } from '../firebaseConfig';
 import { doc, getDoc, collection, getDocs, query, orderBy, limit } from 'firebase/firestore';
 import Skeleton from 'react-loading-skeleton';
 import { IoArrowForwardCircleOutline, IoMegaphoneOutline } from "react-icons/io5";
-import AttendanceChart from '../components/AttendanceChart'; // Import the new component
+import AttendanceChart from '../components/AttendanceChart';
 
-const Dashboard = () => {
+// The component now accepts the 'setHeaderTitle' prop
+const Dashboard = ({ setHeaderTitle }) => {
     const [schedule, setSchedule] = useState(null);
     const [upcomingClasses, setUpcomingClasses] = useState([]);
     const [upcomingDay, setUpcomingDay] = useState('');
     const [latestNotice, setLatestNotice] = useState(null);
-    const [attendanceData, setAttendanceData] = useState([]); // State for attendance
+    const [attendanceData, setAttendanceData] = useState([]);
     const [loading, setLoading] = useState(true);
     const navigate = useNavigate();
 
-    // (The getUpcomingClasses function is unchanged)
+    // --- NEW: Set the header title for this page ---
+    useEffect(() => {
+        setHeaderTitle('Dashboard');
+    }, [setHeaderTitle]);
+
     const getUpcomingClasses = (scheduleData) => {
         const daysOfWeek = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
         const now = new Date();
@@ -71,7 +76,7 @@ const Dashboard = () => {
                     setLatestNotice({ id: noticeSnap.docs[0].id, ...noticeSnap.docs[0].data() });
                 }
                 
-                // --- NEW: Fetch attendance data ---
+                // Fetch attendance data
                 const attendanceRef = collection(db, "attendance");
                 const attendanceSnap = await getDocs(attendanceRef);
                 const attData = attendanceSnap.docs.map(doc => doc.data());
@@ -87,7 +92,6 @@ const Dashboard = () => {
         fetchData();
     }, []);
     
-    // Skeletons for all sections
     const LoadingSkeletons = () => (
         <>
             <div className="bg-white p-4 rounded-lg shadow-md">
@@ -152,7 +156,7 @@ const Dashboard = () => {
                         </div>
                     </section>
                     
-                    {/* --- NEW: Attendance Summary Section --- */}
+                    {/* Attendance Summary Section */}
                     <section>
                          <h2 className="text-xl font-bold text-gray-800 mb-3">Attendance Summary</h2>
                          <AttendanceChart attendanceData={attendanceData} />

@@ -1,48 +1,32 @@
-// src/pages/Settings.jsx
-import React from 'react';
-import { Link } from 'react-router-dom';
-import { useAuth } from '../AuthContext'; // Import our custom hook
+import React, { useEffect } from 'react';
+import { IoBuildOutline } from 'react-icons/io5';
 
-function Settings() {
-  const { currentUser, handleLogout } = useAuth(); // Get the current user and logout function
+// The component now accepts the 'setHeaderTitle' prop
+const Settings = ({ setHeaderTitle }) => {
+    
+    // --- NEW: Set the header title for this page ---
+    useEffect(() => {
+        setHeaderTitle('Settings');
+    }, [setHeaderTitle]);
 
-  const onLogout = async () => {
-    try {
-      await handleLogout();
-      // You will be automatically redirected because of our listener
-    } catch (error) {
-      alert('Failed to log out.');
-    }
-  };
-
-  return (
-    <div className="page-container">
-      <h1 className="page-title">Settings</h1>
-      
-      <div className="settings-section">
-        {/* THE FIX: Show different content based on login state */}
-        {currentUser ? (
-          <div>
-            <p>You are logged in as Admin:</p>
-            <p><strong>{currentUser.email}</strong></p>
-            <button onClick={onLogout} className="logout-button">
-              Log Out
-            </button>
-          </div>
-        ) : (
-          <p>You are not logged in.</p>
-        )}
-      </div>
-
-      <div className="admin-login-link-container">
-        {!currentUser && (
-          <Link to="/admin-login" className="admin-login-link">
-            Admin Login
-          </Link>
-        )}
-      </div>
-    </div>
-  );
-}
+    return (
+        <div className="p-4">
+            <div className="text-center mt-10">
+                <IoBuildOutline size={64} className="mx-auto text-gray-300" />
+                <h2 className="text-2xl font-semibold text-gray-700 mt-4">Settings</h2>
+                <p className="text-gray-500 mt-2">
+                    This page is under construction. Future app settings will appear here.
+                </p>
+                {/* 
+                    Future ideas for this page:
+                    - Dark Mode / Light Mode toggle
+                    - Manage Subjects (the cleanup feature we discussed)
+                    - User Profile Information
+                    - Notification Preferences
+                */}
+            </div>
+        </div>
+    );
+};
 
 export default Settings;

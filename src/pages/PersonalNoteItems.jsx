@@ -1,18 +1,37 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-// --- CORRECTED PATH on the line below ---
-import { useAuth } from '../AuthContext'; 
+import { useAuth } from '../AuthContext';
 import { useFirestoreCollection } from '../hooks/useFirestoreCollection';
+import { doc, getDoc } from 'firebase/firestore';
+import { db } from '../firebaseConfig';
 import { FaPlus } from "react-icons/fa";
 import { MdDelete } from "react-icons/md";
-import { IoArrowBack } from "react-icons/io5";
+import { IoArrowBack, IoCreateOutline } from "react-icons/io5";
 import Skeleton from 'react-loading-skeleton';
 
-// ... rest of the file is the same ...
-
-const PersonalNoteItems = () => {
+// Accept the setHeaderTitle prop
+const PersonalNoteItems = ({ setHeaderTitle }) => {
     const { subjectId, chapterId } = useParams();
     const navigate = useNavigate();
+
+    // --- NEW: Fetch the chapter's name for the title ---
+    useEffect(() => {
+        const fetchChapterName = async () => {
+            setHeaderTitle('Note Items'); // Set a default title first
+            if (subjectId && chapterId) {
+                try {
+                    const docRef = doc(db, 'personal_notes', subjectId, 'chapters', chapterId);
+                    const docSnap = await getDoc(docRef);
+                    if (docSnap.exists()) {
+                        setHeaderTitle(docSnap.data().name);
+                    }
+                } catch (error) {
+                    console.error("Error fetching chapter name: ", error);
+                }
+            }
+        };
+        fetchChapterName();
+    }, [subjectId, chapterId, setHeaderTitle]);
 
     const { data: items, loading, addItem, deleteItem } = useFirestoreCollection(['personal_notes', subjectId, 'chapters', chapterId, 'items']);
     
@@ -33,9 +52,9 @@ const PersonalNoteItems = () => {
     };
 
     const ItemsSkeleton = () => (
-        <div className="space-y-2">
+        <div className="space-y-3">
             {Array(5).fill().map((_, index) => (
-                <div key={index} className="flex justify-between items-center p-3 bg-gray-100 rounded shadow-sm">
+                <div key={index} className="flex justify-between items-center p-4 bg-white rounded-lg shadow-md">
                     <Skeleton width={'70%'} height={24} />
                     <Skeleton circle={true} height={32} width={32} />
                 </div>
@@ -44,44 +63,52 @@ const PersonalNoteItems = () => {
     );
 
     return (
-        <div className="container mx-auto p-4">
+        <div className="p-2">
             <div className="flex justify-between items-center mb-4">
-                <Link to={`/personal-notes/${subjectId}`} className="text-blue-500 hover:underline"><IoArrowBack size={24} /></Link>
-                <h1 className="text-2xl font-bold">My Note Items</h1>
+                <Link to={`/personal-notes/${subjectId}`} className="text-gray-600 hover:text-gray-800 p-2">
+                    <IoArrowBack size={24} />
+                </Link>
                 {currentUser && (
-                    <button onClick={() => setIsAdding(true)} className="bg-blue-500 text-white p-2 rounded-full hover:bg-blue-600">
-                        <FaPlus />
+                    <button onClick={() => setIsAdding(true)} className="inline-flex items-center px-4 py-2 bg-blue-500 text-white font-semibold rounded-lg shadow-md hover:bg-blue-600">
+                        <FaPlus className="mr-2" />
+                        Add Item
                     </button>
                 )}
             </div>
 
             {isAdding && (
-                <div className="mb-4 p-4 border rounded shadow">
-                    <input type="text" value={newItemName} onChange={(e) => setNewItemName(e.target.value)} placeholder="New item name" className="border p-2 w-full mb-2" />
-                    <button onClick={handleSaveItem} className="bg-green-500 text-white p-2 rounded mr-2">Save</button>
-                    <button onClick={() => setIsAdding(false)} className="bg-gray-500 text-white p-2 rounded">Cancel</button>
+                <div className="mb-4 p-4 bg-white rounded-lg shadow-md">
+                    <input type="text" value={newItemName} onChange={(e) => setNewItemName(e.target.value)} placeholder="New item name" className="border p-2 w-full mb-2 rounded-md" />
+                    <div className="flex justify-end gap-2">
+                        <button onClick={() => setIsAdding(false)} className="px-4 py-2 bg-gray-200 text-gray-700 font-semibold rounded-lg hover:bg-gray-300">Cancel</button>
+                        <button onClick={handleSaveItem} className="px-4 py-2 bg-green-500 text-white font-semibold rounded-lg hover:bg-green-600">Save</button>
+                    </div>
                 </div>
             )}
             
             {loading ? <ItemsSkeleton /> : (
-                <div>
-                    {items.length > 0 ? (
-                        <ul className="space-y-2">
-                            {items.map(item => (
-                                <li key={item.id} className="flex justify-between items-center p-3 bg-gray-100 rounded shadow-sm">
-                                    <span onClick={() => navigate(`/personal-notes/${subjectId}/${chapterId}/${item.id}`)} className="cursor-pointer font-semibold flex-grow hover:text-blue-600">
-                                        {item.name}
-                                    </span>
-                                    {currentUser && (
-                                        <button onClick={() => handleDelete(item.id)} className="text-red-500 hover:text-red-700"><MdDelete size={20} /></button>
-                                    )}
-                                </li>
-                            ))}
-                        </ul>
-                    ) : (
-                        <p>No items found. Add a new one to get started.</p>
-                    )}
-                </div>
+                items.length > 0 ? (
+                    <ul className="space-y-3">
+                        {items.map(item => (
+                            <li key={item.id} className="flex justify-between items-center p-4 bg-white rounded-lg shadow-md transition-shadow hover:shadow-lg">
+                                <span onClick={() => navigate(`/personal-notes/${subjectId}/${chapterId}/${item.id}`)} className="cursor-pointer font-semibold text-lg text-gray-800 flex-grow">
+                                    {item.name}
+                                </span>
+                                {currentUser && (
+                                    <button onClick={() => handleDelete(item.id)} className="text-gray-500 hover:text-red-600 p-2 rounded-full hover:bg-gray-100">
+                                        <MdDelete size={22} />
+                                    </button>
+                                )}
+                            </li>
+                        ))}
+                    </ul>
+                ) : (
+                    <div className="text-center mt-10">
+                        <IoCreateOutline size={64} className="mx-auto text-gray-300" />
+                        <h2 className="text-2xl font-semibold text-gray-700 mt-4">No Items Yet</h2>
+                        <p className="text-gray-500 mt-2">Click "Add Item" to create your first note.</p>
+                    </div>
+                )
             )}
         </div>
     );

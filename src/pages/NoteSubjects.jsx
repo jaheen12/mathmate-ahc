@@ -1,17 +1,21 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react'; // Import useEffect
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
-import { useFirestoreCollection } from '../hooks/useFirestoreCollection'; // Import our new hook
+import { useFirestoreCollection } from '../hooks/useFirestoreCollection';
 import { FaPlus } from "react-icons/fa";
 import { MdDelete, MdEdit } from "react-icons/md";
-import { IoArrowBack } from "react-icons/io5";
+import { IoBookOutline } from "react-icons/io5"; // Changed icon for consistency
 import Skeleton from 'react-loading-skeleton';
 
-const NoteSubjects = () => {
-    // --- Step 1: Use the custom hook to get data and functions ---
+// The component now accepts the 'setHeaderTitle' prop
+const NoteSubjects = ({ setHeaderTitle }) => {
     const { data: subjects, loading, addItem, deleteItem, updateItem } = useFirestoreCollection(['official_notes']);
     
-    // --- Step 2: All the UI-specific state remains here ---
+    // --- NEW: Set the header title for this page ---
+    useEffect(() => {
+        setHeaderTitle('Official Notes');
+    }, [setHeaderTitle]);
+
     const [newSubjectName, setNewSubjectName] = useState('');
     const [isAdding, setIsAdding] = useState(false);
     const [isRenaming, setIsRenaming] = useState(false);
@@ -21,7 +25,6 @@ const NoteSubjects = () => {
     const navigate = useNavigate();
     const { currentUser } = useAuth();
 
-    // --- Step 3: The handler functions are now simple, one-line calls to the hook ---
     const handleSaveSubject = async () => {
         if (newSubjectName.trim() === '') return;
         await addItem({ name: newSubjectName });
@@ -40,7 +43,6 @@ const NoteSubjects = () => {
         setRenamingSubjectId(null);
     };
 
-    // --- Helper functions for UI actions ---
     const handleRenameClick = (subject) => {
         setIsRenaming(true);
         setRenamingSubjectId(subject.id);
@@ -51,14 +53,13 @@ const NoteSubjects = () => {
         navigate(`/notes/${subjectId}`);
     };
 
-    // --- The Skeleton component remains the same ---
     const SubjectsSkeleton = () => (
-        <div className="space-y-2">
+        <div className="space-y-3">
             {Array(5).fill().map((_, index) => (
-                <div key={index} className="flex justify-between items-center p-3 bg-gray-100 rounded shadow-sm">
+                <div key={index} className="flex justify-between items-center p-4 bg-white rounded-lg shadow-md">
                     <Skeleton width={'60%'} height={24} />
-                    <div className="flex items-center">
-                        <Skeleton circle={true} height={32} width={32} style={{ marginRight: '10px' }} />
+                    <div className="flex items-center gap-2">
+                        <Skeleton circle={true} height={32} width={32} />
                         <Skeleton circle={true} height={32} width={32} />
                     </div>
                 </div>
@@ -67,52 +68,59 @@ const NoteSubjects = () => {
     );
 
     return (
-        <div className="container mx-auto p-4">
-            <div className="flex justify-between items-center mb-4">
-                <Link to="/profile" className="text-blue-500 hover:underline"><IoArrowBack size={24} /></Link>
-                <h1 className="text-2xl font-bold">Official Note Subjects</h1>
-                {currentUser && (
-                    <button onClick={() => setIsAdding(true)} className="bg-blue-500 text-white p-2 rounded-full hover:bg-blue-600">
-                        <FaPlus />
+        <div className="p-2">
+            {currentUser && (
+                <div className="flex justify-end mb-4">
+                     <button onClick={() => setIsAdding(true)} className="inline-flex items-center px-4 py-2 bg-blue-500 text-white font-semibold rounded-lg shadow-md hover:bg-blue-600">
+                        <FaPlus className="mr-2" />
+                        Add Subject
                     </button>
-                )}
-            </div>
+                </div>
+            )}
 
             {isAdding && (
-                <div className="mb-4 p-4 border rounded shadow">
-                    <input type="text" value={newSubjectName} onChange={(e) => setNewSubjectName(e.target.value)} className="border p-2 w-full mb-2" placeholder="New subject name" />
-                    <button onClick={handleSaveSubject} className="bg-green-500 text-white p-2 rounded mr-2">Save</button>
-                    <button onClick={() => setIsAdding(false)} className="bg-gray-500 text-white p-2 rounded">Cancel</button>
+                <div className="mb-4 p-4 bg-white rounded-lg shadow-md">
+                    <input type="text" value={newSubjectName} onChange={(e) => setNewSubjectName(e.target.value)} className="border p-2 w-full mb-2 rounded-md" placeholder="New subject name" />
+                    <div className="flex justify-end gap-2">
+                        <button onClick={() => setIsAdding(false)} className="px-4 py-2 bg-gray-200 text-gray-700 font-semibold rounded-lg hover:bg-gray-300">Cancel</button>
+                        <button onClick={handleSaveSubject} className="px-4 py-2 bg-green-500 text-white font-semibold rounded-lg hover:bg-green-600">Save</button>
+                    </div>
                 </div>
             )}
             {isRenaming && (
-                <div className="mb-4 p-4 border rounded shadow">
-                    <input type="text" value={renamingSubjectName} onChange={(e) => setRenamingSubjectName(e.target.value)} className="border p-2 w-full mb-2" />
-                    <button onClick={handleSaveRename} className="bg-green-500 text-white p-2 rounded mr-2">Save</button>
-                    <button onClick={() => setIsRenaming(false)} className="bg-gray-500 text-white p-2 rounded">Cancel</button>
+                <div className="mb-4 p-4 bg-white rounded-lg shadow-md">
+                    <input type="text" value={renamingSubjectName} onChange={(e) => setRenamingSubjectName(e.target.value)} className="border p-2 w-full mb-2 rounded-md" />
+                    <div className="flex justify-end gap-2">
+                        <button onClick={() => setIsRenaming(false)} className="px-4 py-2 bg-gray-200 text-gray-700 font-semibold rounded-lg hover:bg-gray-300">Cancel</button>
+                        <button onClick={handleSaveRename} className="px-4 py-2 bg-green-500 text-white font-semibold rounded-lg hover:bg-green-600">Save</button>
+                    </div>
                 </div>
             )}
 
             {loading ? <SubjectsSkeleton /> : (
                 <div>
                     {subjects.length > 0 ? (
-                        <ul className="space-y-2">
+                        <ul className="space-y-3">
                             {subjects.map(subject => (
-                                <li key={subject.id} className="flex justify-between items-center p-3 bg-gray-100 rounded shadow-sm">
-                                    <span onClick={() => handleSubjectClick(subject.id)} className="cursor-pointer font-semibold flex-grow hover:text-blue-600">
+                                <li key={subject.id} className="flex justify-between items-center p-4 bg-white rounded-lg shadow-md transition-shadow hover:shadow-lg">
+                                    <span onClick={() => handleSubjectClick(subject.id)} className="cursor-pointer font-semibold text-lg text-gray-800 flex-grow">
                                         {subject.name}
                                     </span>
                                     {currentUser && (
-                                        <div className="flex items-center">
-                                            <button onClick={() => handleRenameClick(subject)} className="text-blue-500 hover:text-blue-700 mr-2"><MdEdit size={20} /></button>
-                                            <button onClick={() => handleDelete(subject.id)} className="text-red-500 hover:text-red-700"><MdDelete size={20} /></button>
+                                        <div className="flex items-center gap-2">
+                                            <button onClick={() => handleRenameClick(subject)} className="text-gray-500 hover:text-blue-600 p-2 rounded-full hover:bg-gray-100"><MdEdit size={22} /></button>
+                                            <button onClick={() => handleDelete(subject.id)} className="text-gray-500 hover:text-red-600 p-2 rounded-full hover:bg-gray-100"><MdDelete size={22} /></button>
                                         </div>
                                     )}
                                 </li>
                             ))}
                         </ul>
                     ) : (
-                        <p>No subjects found. Add a new one to get started!</p>
+                        <div className="text-center mt-10">
+                            <IoBookOutline size={64} className="mx-auto text-gray-300" />
+                            <h2 className="text-2xl font-semibold text-gray-700 mt-4">No Official Subjects</h2>
+                            <p className="text-gray-500 mt-2">An admin needs to add subjects to this section.</p>
+                        </div>
                     )}
                 </div>
             )}

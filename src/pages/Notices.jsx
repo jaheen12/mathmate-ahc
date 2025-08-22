@@ -3,25 +3,28 @@ import { useAuth } from '../AuthContext';
 import { FaPlus } from "react-icons/fa";
 import NoticeCard from '../components/NoticeCard';
 import NoticeEditorModal from '../components/NoticeEditorModal';
-import { db } from '../firebaseConfig'; // Direct db import
-import { collection, query, orderBy, onSnapshot, addDoc, deleteDoc, doc, updateDoc } from 'firebase/firestore'; // Import all needed functions
+import { db } from '../firebaseConfig';
+import { collection, query, orderBy, onSnapshot, addDoc, deleteDoc, doc, updateDoc } from 'firebase/firestore';
 import Skeleton from 'react-loading-skeleton';
 import { IoMegaphoneOutline } from "react-icons/io5";
 import { toast } from 'react-toastify';
 
-const Notices = () => {
+const Notices = ({ setHeaderTitle }) => {
+    // --- THIS LINE IS NOW CORRECTED ---
     const [notices, setNotices] = useState([]);
     const [loading, setLoading] = useState(true);
     const [isEditorOpen, setEditorOpen] = useState(false);
     const [editingNotice, setEditingNotice] = useState(null);
     const { currentUser } = useAuth();
 
-    // --- STANDARD and ROBUST data fetching with useEffect and onSnapshot ---
+    useEffect(() => {
+        setHeaderTitle('Notices');
+    }, [setHeaderTitle]);
+
     useEffect(() => {
         setLoading(true);
         const noticesQuery = query(collection(db, "notices"), orderBy("createdAt", "desc"));
 
-        // onSnapshot creates a real-time listener that works offline
         const unsubscribe = onSnapshot(noticesQuery, (querySnapshot) => {
             const noticesData = querySnapshot.docs.map(doc => ({
                 id: doc.id,
@@ -35,9 +38,8 @@ const Notices = () => {
             setLoading(false);
         });
 
-        // Cleanup the listener when the component unmounts
         return () => unsubscribe();
-    }, []); // Empty array ensures this runs only once on mount
+    }, []);
 
     const handleOpenAddModal = () => {
         setEditingNotice({}); 
@@ -48,7 +50,7 @@ const Notices = () => {
         setEditingNotice(notice);
         setEditorOpen(true);
     };
-
+    
     const handleCloseModal = () => {
         setEditorOpen(false);
         setEditingNotice(null);
@@ -56,19 +58,17 @@ const Notices = () => {
 
     const handleSaveNotice = async (noticeData) => {
         const { id, title, content } = noticeData;
-
         if (id) {
-            // This is an UPDATE
+            // Update
             try {
                 const noticeDoc = doc(db, "notices", id);
                 await updateDoc(noticeDoc, { title, content });
                 toast.success("Notice updated successfully!");
             } catch (error) {
-                console.error("Error updating notice: ", error);
                 toast.error("Failed to update notice.");
             }
         } else {
-            // This is a NEW notice
+            // Add new
             try {
                 await addDoc(collection(db, "notices"), { 
                     title, 
@@ -77,7 +77,6 @@ const Notices = () => {
                 });
                 toast.success("Notice added successfully!");
             } catch (error) {
-                console.error("Error adding new notice: ", error);
                 toast.error("Failed to add new notice.");
             }
         }
@@ -89,7 +88,6 @@ const Notices = () => {
                 await deleteDoc(doc(db, "notices", id));
                 toast.success("Notice deleted successfully!");
             } catch (error) {
-                console.error("Error deleting notice: ", error);
                 toast.error("Failed to delete notice.");
             }
         }

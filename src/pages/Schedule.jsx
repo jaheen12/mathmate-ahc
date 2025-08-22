@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react'; // Import useEffect
 import { Link } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
 import Skeleton from 'react-loading-skeleton';
@@ -7,10 +7,16 @@ import { useFirestoreDocument } from '../hooks/useFirestoreDocument';
 import ScheduleView from '../components/ScheduleView';
 import TimeSlotsEditorModal from '../components/TimeSlotsEditorModal';
 
-const Schedule = () => {
+// The component now accepts the 'setHeaderTitle' prop
+const Schedule = ({ setHeaderTitle }) => {
     const { data: scheduleDoc, loading: scheduleLoading } = useFirestoreDocument(['schedules', 'first_year']);
     const { data: timeSlotsDoc, loading: timeSlotsLoading, updateDocument: updateTimeSlots } = useFirestoreDocument(['time_slots', 'default_periods']);
     
+    // --- NEW: Set the header title for this page ---
+    useEffect(() => {
+        setHeaderTitle('Class Schedule');
+    }, [setHeaderTitle]);
+
     const { currentUser } = useAuth();
     const [isModalOpen, setIsModalOpen] = useState(false);
 
@@ -19,12 +25,10 @@ const Schedule = () => {
     const loading = scheduleLoading || timeSlotsLoading;
 
     const handleSaveTimeSlots = (newTimeSlots) => {
-        // Sort the time slots before saving to maintain a consistent order
         const sortedTimeSlots = newTimeSlots.sort();
         updateTimeSlots({ periods: sortedTimeSlots });
     };
 
-    // This is the full, correct skeleton component
     const SchedulePageSkeleton = () => (
         <div className="bg-white p-4 rounded-lg shadow-md">
             <Skeleton height={40} className="mb-2" />
