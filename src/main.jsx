@@ -5,7 +5,13 @@ import App from './App.jsx';
 // Corrected path - removed the non-existent 'contexts' folder
 import { AuthProvider } from './AuthContext.jsx'; 
 import { ToastContainer } from 'react-toastify';
+// src/main.jsx
 
+// ... other imports ...
+import 'react-loading-skeleton/dist/skeleton.css';
+import 'katex/dist/katex.min.css'; // <--- ADD THIS LINE
+import './index.css';
+// ...
 import 'react-toastify/dist/ReactToastify.css';
 import 'react-loading-skeleton/dist/skeleton.css';
 import './index.css';
