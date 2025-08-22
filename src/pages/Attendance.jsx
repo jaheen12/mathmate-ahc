@@ -1,48 +1,28 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { useAuth } from '../AuthContext';
-import { db } from '../firebaseConfig';
-import { collection, query, where, getDocs, writeBatch, doc, onSnapshot } from 'firebase/firestore';
 import { toast } from 'react-toastify';
 import { format, startOfDay } from 'date-fns';
 import Skeleton from 'react-loading-skeleton';
 import { IoCheckmarkCircle, IoCloseCircle, IoSaveOutline } from 'react-icons/io5';
+import useLocalStorage from '../hooks/useLocalStorage'; // Custom hook for local storage
 
 // The component now accepts the 'setHeaderTitle' prop
 const Attendance = ({ setHeaderTitle }) => {
-    const { currentUser } = useAuth();
-    const [allRecords, setAllRecords] = useState([]);
+    const [allRecords, setAllRecords] = useLocalStorage('attendanceRecords', []);
     const [selectedDate, setSelectedDate] = useState(format(startOfDay(new Date()), 'yyyy-MM-dd'));
     const [draftForDate, setDraftForDate] = useState({});
     const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
     const [loading, setLoading] = useState(true);
     
-    // --- NEW: Set the header title for this page ---
+    // Set the header title for this page
     useEffect(() => {
         setHeaderTitle('Attendance');
     }, [setHeaderTitle]);
 
     const mainSubjects = ["Major", "NM-PHY", "NM-STAT"];
 
-    // Fetch all historical records for stats
+    // Load records from local storage and set initial draft
     useEffect(() => {
-        if (!currentUser) {
-            setLoading(false);
-            return;
-        }
         setLoading(true);
-        const allRecordsQuery = query(collection(db, "attendance"), where("userId", "==", currentUser.uid));
-        
-        const unsubscribe = onSnapshot(allRecordsQuery, (snapshot) => {
-            const records = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-            setAllRecords(records);
-            setLoading(false);
-        }, () => { setLoading(false); });
-
-        return () => unsubscribe();
-    }, [currentUser]);
-
-    // When allRecords or selectedDate changes, update the draft for the selected date
-    useEffect(() => {
         const recordsForSelectedDate = {};
         allRecords.forEach(rec => {
             if (rec.date === selectedDate) {
@@ -51,6 +31,7 @@ const Attendance = ({ setHeaderTitle }) => {
         });
         setDraftForDate(recordsForSelectedDate);
         setHasUnsavedChanges(false);
+        setLoading(false);
     }, [allRecords, selectedDate]);
 
     // Calculate overall stats from all historical records
@@ -82,27 +63,27 @@ const Attendance = ({ setHeaderTitle }) => {
         setHasUnsavedChanges(true);
     };
     
-    // Save all changes for the selected date to Firestore
-    const handleSaveChanges = async () => {
-        if (!currentUser) return;
+    // Save all changes for the selected date to Local Storage
+    const handleSaveChanges = () => {
         if (window.confirm(`Save attendance changes for ${selectedDate}?`)) {
             try {
-                const batch = writeBatch(db);
-                const recordsForDateQuery = query(collection(db, "attendance"), where("userId", "==", currentUser.uid), where("date", "==", selectedDate));
-                const existingDocs = await getDocs(recordsForDateQuery);
+                // Filter out old records for the selected date
+                const otherDayRecords = allRecords.filter(rec => rec.date !== selectedDate);
+                
+                // Create new records for the selected date from the draft
+                const newRecordsForDate = Object.entries(draftForDate).map(([subject, { status }]) => ({
+                    date: selectedDate,
+                    subject,
+                    status
+                }));
 
-                existingDocs.forEach(doc => batch.delete(doc.ref));
-
-                Object.entries(draftForDate).forEach(([subject, { status }]) => {
-                    const newDocRef = doc(collection(db, "attendance"));
-                    batch.set(newDocRef, { date: selectedDate, subject, status, userId: currentUser.uid });
-                });
-
-                await batch.commit();
-                toast.success(`Attendance for ${selectedDate} saved!`);
+                // Combine and set the new state
+                setAllRecords([...otherDayRecords, ...newRecordsForDate]);
+                
+                toast.success(`Attendance for ${selectedDate} saved locally!`);
                 setHasUnsavedChanges(false);
             } catch (error) {
-                console.error("Error saving attendance: ", error);
+                console.error("Error saving attendance to local storage: ", error);
                 toast.error("Failed to save changes.");
             }
         }
