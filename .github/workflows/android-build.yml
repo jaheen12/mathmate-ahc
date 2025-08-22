@@ -22,7 +22,7 @@ jobs:
         run: npm install
 
       - name: Create .env file
-        env: # Define environment variables for this step
+        env:
           VITE_API_KEY: ${{ secrets.VITE_API_KEY }}
           VITE_AUTH_DOMAIN: ${{ secrets.VITE_AUTH_DOMAIN }}
           VITE_PROJECT_ID: ${{ secrets.VITE_PROJECT_ID }}
@@ -51,7 +51,6 @@ jobs:
       - name: Install Capacitor CLI
         run: npm install -g @capacitor/cli
 
-      # --- THIS IS THE NEW, CRITICAL FIX ---
       - name: Add Android platform
         run: npx cap add android
 
@@ -62,12 +61,17 @@ jobs:
         run: chmod +x ./gradlew
         working-directory: ./android
 
-      - name: Build Android App Bundle (AAB)
-        run: ./gradlew bundleRelease
+      # --- THIS IS THE KEY CHANGE ---
+      - name: Build Android APK
+        # We changed 'bundleRelease' to 'assembleRelease'
+        run: ./gradlew assembleRelease
         working-directory: ./android
 
-      - name: Upload App Bundle
+      # --- THIS IS THE SECOND KEY CHANGE ---
+      - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: app-release.aab
-          path: android/app/build/outputs/bundle/release/app-release.aab
+          # The name of the artifact is now 'app-release.apk'
+          name: app-release.apk
+          # The path to the output file is now different
+          path: android/app/build/outputs/apk/release/app-release.apk
