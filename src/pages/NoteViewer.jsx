@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+// src/pages/NoteViewer.jsx
+import React, { useState, useEffect } from 'react'; // CORRECTED THIS LINE
 import { useParams, Link } from 'react-router-dom';
 import { db } from '../firebaseConfig';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
@@ -7,12 +8,26 @@ import { useAuth } from '../AuthContext';
 import Skeleton from 'react-loading-skeleton';
 import { IoArrowBack, IoSaveOutline, IoPencil } from "react-icons/io5";
 
+// A robust component to render ANY valid HTML, including MathML
+const HtmlRenderer = ({ htmlString }) => {
+    const containerRef = React.useRef(null);
+
+    React.useEffect(() => {
+        if (containerRef.current) {
+            containerRef.current.innerHTML = htmlString || '<p>No content yet.</p>';
+        }
+    }, [htmlString]);
+
+    return <div ref={containerRef} className="prose max-w-none" />;
+};
+
+
 const NoteViewer = ({ setHeaderTitle }) => {
     const { subjectId, chapterId, itemId } = useParams();
     const [note, setNote] = useState(null);
     const [loading, setLoading] = useState(true);
-    const [isEditing, setIsEditing] = useState(false); // State to toggle edit mode
-    const [editedContent, setEditedContent] = useState(''); // State for the editor
+    const [isEditing, setIsEditing] = useState(false);
+    const [editedContent, setEditedContent] = useState('');
     
     const { currentUser } = useAuth();
     
@@ -35,13 +50,14 @@ const NoteViewer = ({ setHeaderTitle }) => {
                 if (docSnap.exists()) {
                     const noteData = docSnap.data();
                     setNote(noteData);
-                    setEditedContent(noteData.content || ''); // Pre-fill the editor state
+                    setEditedContent(noteData.content || '');
                     setHeaderTitle(noteData.name || 'Note');
                 } else {
                     toast.error("Note not found.");
                     setHeaderTitle('Note Not Found');
                 }
             } catch (error) {
+                console.error("Error fetching note:", error); // Added error logging
                 toast.error("Failed to load the note.");
                 setHeaderTitle('Error');
             } finally {
@@ -50,23 +66,24 @@ const NoteViewer = ({ setHeaderTitle }) => {
         };
 
         fetchNote();
-    }, [itemId, setHeaderTitle]);
+    }, [itemId, setHeaderTitle, subjectId, chapterId, collectionPrefix]); // Added dependencies
 
     const handleSave = async () => {
         try {
             const noteDocRef = doc(db, collectionPrefix, subjectId, "chapters", chapterId, "items", itemId);
             await updateDoc(noteDocRef, { content: editedContent });
             toast.success('Note saved successfully!');
-            setIsEditing(false); // Exit edit mode after saving
+            setIsEditing(false);
         } catch (error) {
+            console.error("Error saving note:", error); // Added error logging
             toast.error('Failed to save note.');
         }
     };
 
-    const ViewerSkeleton = () => (
+    const ViewerSkeleton = () => ( 
         <div>
             <Skeleton height={300} />
-        </div>
+        </div> 
     );
 
     return (
@@ -75,17 +92,14 @@ const NoteViewer = ({ setHeaderTitle }) => {
                 <Link to={backLink} className="text-gray-600 hover:text-gray-800 p-2">
                     <IoArrowBack size={24} />
                 </Link>
-                {/* Show Edit/Save buttons only for admin */}
                 {currentUser && (
                     isEditing ? (
                         <button onClick={handleSave} className="inline-flex items-center px-4 py-2 bg-green-500 text-white font-semibold rounded-lg shadow-md hover:bg-green-600">
-                            <IoSaveOutline className="mr-2" />
-                            Save
+                            <IoSaveOutline className="mr-2" /> Save
                         </button>
                     ) : (
                         <button onClick={() => setIsEditing(true)} className="inline-flex items-center px-4 py-2 bg-blue-500 text-white font-semibold rounded-lg shadow-md hover:bg-blue-600">
-                            <IoPencil className="mr-2" />
-                            Edit
+                            <IoPencil className="mr-2" /> Edit
                         </button>
                     )
                 )}
@@ -96,19 +110,14 @@ const NoteViewer = ({ setHeaderTitle }) => {
             ) : (
                 <div className="bg-white p-4 md:p-6 rounded-lg shadow-md">
                     {isEditing ? (
-                        // --- EDIT MODE: Show a plain textarea for HTML code ---
                         <textarea
                             value={editedContent}
                             onChange={(e) => setEditedContent(e.target.value)}
                             className="w-full h-96 p-2 border rounded font-mono text-sm bg-gray-50"
-                            placeholder="Enter your HTML code here..."
+                            placeholder="Enter your HTML code with MathML here..."
                         />
                     ) : (
-                        // --- VIEW MODE: Render the HTML code ---
-                        <div 
-                            className="prose max-w-none" 
-                            dangerouslySetInnerHTML={{ __html: note?.content || '<p>No content yet.</p>' }} 
-                        />
+                        <HtmlRenderer htmlString={note?.content} />
                     )}
                 </div>
             )}
