@@ -39,31 +39,33 @@ function App() {
   return (
     <div className="relative min-h-screen md:flex bg-gray-100">
       <Sidebar isSidebarOpen={isSidebarOpen} toggleSidebar={toggleSidebar} />
-      <div className="flex-1 flex flex-col h-screen">
+      <div className="flex-1 flex flex-col h-screen overflow-hidden">
         <Header toggleSidebar={toggleSidebar} title={headerTitle} />
-        <main className="flex-1 overflow-y-auto p-4 md:p-6">
-          <Routes>
-            {/* Pass setHeaderTitle to all main pages */}
-            <Route path="/" element={<Dashboard setHeaderTitle={setHeaderTitle} />} />
-            <Route path="/notes" element={<NoteSubjects setHeaderTitle={setHeaderTitle} />} />
-            <Route path="/notes/:subjectId" element={<NoteChapters setHeaderTitle={setHeaderTitle} />} />
-            <Route path="/notes/:subjectId/:chapterId" element={<NoteItems setHeaderTitle={setHeaderTitle} />} />
-            <Route path="/personal-notes" element={<PersonalSubjects setHeaderTitle={setHeaderTitle} />} />
-            <Route path="/personal-notes/:subjectId" element={<PersonalChapters setHeaderTitle={setHeaderTitle} />} />
-            <Route path="/personal-notes/:subjectId/:chapterId" element={<PersonalNoteItems setHeaderTitle={setHeaderTitle} />} />
-            <Route path="/resources" element={<ResourceCategories setHeaderTitle={setHeaderTitle} />} />
-            <Route path="/resources/:categoryId" element={<ResourceChapters setHeaderTitle={setHeaderTitle} />} />
-            <Route path="/resources/:categoryId/:chapterId" element={<ResourceItems setHeaderTitle={setHeaderTitle} />} />
-            <Route path="/schedule" element={<Schedule setHeaderTitle={setHeaderTitle} />} />
-            <Route path="/notices" element={<Notices setHeaderTitle={setHeaderTitle} />} />
-            <Route path="/attendance" element={<Attendance setHeaderTitle={setHeaderTitle} />} />
-            <Route path="/settings" element={<Settings setHeaderTitle={setHeaderTitle} />} />
-            
-            {/* Editor/Viewer pages don't need to set the title, so we don't pass the prop */}
-            <Route path="/schedule-editor" element={<ScheduleEditor setHeaderTitle={setHeaderTitle} />} />
-            <Route path="/notes/:subjectId/:chapterId/:itemId" element={<NoteViewer setHeaderTitle={setHeaderTitle} />} />
-            <Route path="/personal-notes/:subjectId/:chapterId/:itemId" element={<NoteViewer setHeaderTitle={setHeaderTitle} />} />
-          </Routes>
+        {/* Main content area with vertical scrolling and NO horizontal padding */}
+        <main className="flex-1 overflow-y-auto py-4">
+          {/* Inner container adds back the horizontal padding */}
+          <div className="px-2 md:px-6">
+            <Routes>
+              {/* All routes are now inside this padded container */}
+              <Route path="/" element={<Dashboard setHeaderTitle={setHeaderTitle} />} />
+              <Route path="/notes" element={<NoteSubjects setHeaderTitle={setHeaderTitle} />} />
+              <Route path="/notes/:subjectId" element={<NoteChapters setHeaderTitle={setHeaderTitle} />} />
+              <Route path="/notes/:subjectId/:chapterId" element={<NoteItems setHeaderTitle={setHeaderTitle} />} />
+              <Route path="/notes/:subjectId/:chapterId/:itemId" element={<NoteViewer setHeaderTitle={setHeaderTitle} />} />
+              <Route path="/personal-notes" element={<PersonalSubjects setHeaderTitle={setHeaderTitle} />} />
+              <Route path="/personal-notes/:subjectId" element={<PersonalChapters setHeaderTitle={setHeaderTitle} />} />
+              <Route path="/personal-notes/:subjectId/:chapterId" element={<PersonalNoteItems setHeaderTitle={setHeaderTitle} />} />
+              <Route path="/personal-notes/:subjectId/:chapterId/:itemId" element={<NoteViewer setHeaderTitle={setHeaderTitle} />} />
+              <Route path="/resources" element={<ResourceCategories setHeaderTitle={setHeaderTitle} />} />
+              <Route path="/resources/:categoryId" element={<ResourceChapters setHeaderTitle={setHeaderTitle} />} />
+              <Route path="/resources/:categoryId/:chapterId" element={<ResourceItems setHeaderTitle={setHeaderTitle} />} />
+              <Route path="/schedule" element={<Schedule setHeaderTitle={setHeaderTitle} />} />
+              <Route path="/schedule-editor" element={<ScheduleEditor setHeaderTitle={setHeaderTitle} />} />
+              <Route path="/notices" element={<Notices setHeaderTitle={setHeaderTitle} />} />
+              <Route path="/attendance" element={<Attendance setHeaderTitle={setHeaderTitle} />} />
+              <Route path="/settings" element={<Settings setHeaderTitle={setHeaderTitle} />} />
+            </Routes>
+          </div>
         </main>
       </div>
     </div>
