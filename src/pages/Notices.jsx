@@ -1,122 +1,141 @@
 import React, { useState, useEffect } from 'react';
-import NoticeCard from '../components/NoticeCard';
 import { db } from '../firebaseConfig';
-import { collection, getDocs, query, orderBy, addDoc, updateDoc, deleteDoc, doc, serverTimestamp } from 'firebase/firestore';
-import { useAuth } from '../AuthContext';
-import Swal from 'sweetalert2';
-import withReactContent from 'sweetalert2-react-content';
-import { PlusCircle } from 'lucide-react';
+import { collection, getDocs, addDoc, deleteDoc, doc, updateDoc } from 'firebase/firestore';
+import { toast } from 'react-toastify';
+import { useAuth } from '../contexts/AuthContext';
+import { FaPlus } from "react-icons/fa";
+import { IoArrowBack } from "react-icons/io5";
+import NoticeCard from '../components/NoticeCard';
+import { Link } from 'react-router-dom';
 
-const MySwal = withReactContent(Swal);
-const NOTICES_CACHE_KEY = 'mathmate-cache-notices';
+const Notices = () => {
+    const [notices, setNotices] = useState([]);
+    const [isAdding, setIsAdding] = useState(false);
+    const [newNotice, setNewNotice] = useState({ title: '', content: '' });
+    const [loading, setLoading] = useState(true);
+    const { currentUser } = useAuth();
 
-function Notices() {
-  const [notices, setNotices] = useState(() => JSON.parse(localStorage.getItem(NOTICES_CACHE_KEY)) || []);
-  const [isLoading, setIsLoading] = useState(notices.length === 0);
-  const { currentUser } = useAuth();
+    useEffect(() => {
+        const fetchNotices = async () => {
+            setLoading(true);
+            try {
+                const querySnapshot = await getDocs(collection(db, "notices"));
+                const noticesData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                // Sort notices by creation date, newest first
+                noticesData.sort((a, b) => b.createdAt.toDate() - a.createdAt.toDate());
+                setNotices(noticesData);
+            } catch (error) {
+                console.error("Error fetching notices: ", error);
+                toast.error("Failed to fetch notices.");
+            } finally {
+                setLoading(false);
+            }
+        };
 
-  const fetchNotices = async () => {
-    try {
-      const noticesCollectionRef = collection(db, 'notices');
-      const q = query(noticesCollectionRef, orderBy('createdAt', 'desc'));
-      const noticesSnapshot = await getDocs(q);
-      const freshNotices = noticesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      
-      if(JSON.stringify(freshNotices) !== JSON.stringify(notices)) {
-        setNotices(freshNotices);
-        localStorage.setItem(NOTICES_CACHE_KEY, JSON.stringify(freshNotices));
-      }
-    } catch (error) {
-      console.error("Error fetching notices (might be offline): ", error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+        fetchNotices();
+    }, []);
 
-  useEffect(() => {
-    setIsLoading(notices.length === 0);
-    if (navigator.onLine) {
-      fetchNotices();
-    } else {
-      setIsLoading(false);
-    }
-  }, []);
-  
-  const handleOpenNoticeForm = (notice = null) => {
-    MySwal.fire({
-      title: notice ? 'Edit Notice' : 'Post New Notice',
-      html: `
-        <input id="swal-title" class="swal2-input" placeholder="Notice Title" value="${notice ? notice.title : ''}">
-        <textarea id="swal-content" class="swal2-textarea" placeholder="Notice content...">${notice ? notice.content : ''}</textarea>
-        <div class="swal2-checkbox">
-          <input type="checkbox" id="swal-important" ${notice && notice.isImportant ? 'checked' : ''}>
-          <label for="swal-important">Mark as Important</label>
-        </div>
-      `,
-      confirmButtonText: 'Save', showCancelButton: true,
-      preConfirm: () => {
-        const title = document.getElementById('swal-title').value;
-        const content = document.getElementById('swal-content').value;
-        if (!title || !content) { Swal.showValidationMessage('Title and content are required'); }
-        return { title, content, isImportant: document.getElementById('swal-important').checked };
-      }
-    }).then(async (result) => {
-      if (result.isConfirmed) {
-        try {
-          if (notice) {
-            const noticeRef = doc(db, 'notices', notice.id);
-            await updateDoc(noticeRef, result.value);
-          } else {
-            await addDoc(collection(db, 'notices'), { ...result.value, createdAt: serverTimestamp() });
-          }
-          fetchNotices();
-          Swal.fire('Success!', 'The notice has been saved.', 'success');
-        } catch (error) {
-          Swal.fire('Error!', 'Could not save the notice: ' + error.message, 'error');
+    const handleSaveNotice = async () => {
+        if (newNotice.title.trim() === '' || newNotice.content.trim() === '') {
+            toast.error('Title and content cannot be empty');
+            return;
         }
-      }
-    });
-  };
-
-  const handleDelete = (noticeId) => {
-    MySwal.fire({
-      title: 'Are you sure?', text: "You are about to permanently delete this notice.",
-      icon: 'warning', showCancelButton: true, confirmButtonColor: '#d33', confirmButtonText: 'Yes, delete it!'
-    }).then(async (result) => {
-      if (result.isConfirmed) {
         try {
-          await deleteDoc(doc(db, 'notices', noticeId));
-          fetchNotices();
-          Swal.fire('Deleted!', 'The notice has been deleted.', 'success');
+            const docRef = await addDoc(collection(db, "notices"), {
+                ...newNotice,
+                createdAt: new Date()
+            });
+            const newNoticesList = [{ id: docRef.id, ...newNotice, createdAt: { toDate: () => new Date() } }, ...notices];
+            setNotices(newNoticesList);
+            setNewNotice({ title: '', content: '' });
+            setIsAdding(false);
+            toast.success('Notice added successfully!');
         } catch (error) {
-          Swal.fire('Error!', 'Could not delete the notice. ' + error.message, 'error');
+            console.error("Error adding notice: ", error);
+            toast.error('Failed to add notice.');
         }
-      }
-    });
-  };
+    };
+    
+    const handleDelete = async (noticeId) => {
+        if (window.confirm("Are you sure you want to delete this notice?")) {
+            try {
+                await deleteDoc(doc(db, "notices", noticeId));
+                setNotices(notices.filter(notice => notice.id !== noticeId));
+                toast.success('Notice deleted successfully!');
+            } catch (error) {
+                console.error("Error deleting notice: ", error);
+                toast.error('Failed to delete notice.');
+            }
+        }
+    };
+    
+    const handleUpdate = async (noticeId, updatedTitle, updatedContent) => {
+        try {
+            const noticeDoc = doc(db, "notices", noticeId);
+            await updateDoc(noticeDoc, {
+                title: updatedTitle,
+                content: updatedContent
+            });
+            setNotices(notices.map(n => n.id === noticeId ? { ...n, title: updatedTitle, content: updatedContent } : n));
+            toast.success('Notice updated successfully!');
+        } catch (error) {
+            console.error("Error updating notice: ", error);
+            toast.error('Failed to update notice.');
+        }
+    };
 
-  return (
-    <div className="page-container">
-      <h1 className="page-title">Notice Board</h1>
-      {isLoading ? <p>Loading notices...</p> : (
-        <div>
-          {notices.length > 0 ? (
-            notices.map(notice => (
-              <NoticeCard key={notice.id} notice={notice}
-                onEdit={handleOpenNoticeForm} onDelete={handleDelete} />
-            ))
-          ) : (
-            <p className="empty-message">There are no notices to display.</p>
-          )}
+    return (
+        <div className="container mx-auto p-4">
+             <div className="flex justify-between items-center mb-4">
+                <Link to="/profile" className="text-blue-500 hover:underline"><IoArrowBack size={24} /></Link>
+                <h1 className="text-2xl font-bold">Notices</h1>
+                {currentUser && (
+                    <button onClick={() => setIsAdding(true)} className="bg-blue-500 text-white p-2 rounded-full hover:bg-blue-600">
+                        <FaPlus />
+                    </button>
+                )}
+            </div>
+
+            {loading ? <p>Loading notices...</p> : (
+                <div>
+                    {isAdding && (
+                        <div className="mb-4 p-4 border rounded shadow">
+                            <input
+                                type="text"
+                                value={newNotice.title}
+                                onChange={(e) => setNewNotice({ ...newNotice, title: e.target.value })}
+                                placeholder="Notice title"
+                                className="border p-2 w-full mb-2"
+                            />
+                            <textarea
+                                value={newNotice.content}
+                                onChange={(e) => setNewNotice({ ...newNotice, content: e.target.value })}
+                                placeholder="Notice content"
+                                className="border p-2 w-full mb-2"
+                                rows="4"
+                            />
+                            <button onClick={handleSaveNotice} className="bg-green-500 text-white p-2 rounded mr-2">Save</button>
+                            <button onClick={() => setIsAdding(false)} className="bg-gray-500 text-white p-2 rounded">Cancel</button>
+                        </div>
+                    )}
+                    {notices.length > 0 ? (
+                        <div className="space-y-4">
+                            {notices.map(notice => (
+                                <NoticeCard 
+                                    key={notice.id} 
+                                    notice={notice} 
+                                    onDelete={handleDelete}
+                                    onUpdate={handleUpdate}
+                                />
+                            ))}
+                        </div>
+                    ) : (
+                        <p>No notices found.</p>
+                    )}
+                </div>
+            )}
         </div>
-      )}
-      {currentUser && (
-        <button className="fab-button" onClick={() => handleOpenNoticeForm()}>
-          <PlusCircle size={24} /> Post Notice
-        </button>
-      )}
-    </div>
-  );
-}
+    );
+};
 
 export default Notices;

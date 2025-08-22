@@ -1,131 +1,136 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Plus, Link as LinkIcon, Pencil, Trash2 } from 'lucide-react';
+import { useParams, Link } from 'react-router-dom';
 import { db } from '../firebaseConfig';
-import { collection, getDocs, doc, addDoc, updateDoc, deleteDoc } from 'firebase/firestore';
-import { useAuth } from '../AuthContext';
-import Swal from 'sweetalert2';
-import withReactContent from 'sweetalert2-react-content';
+import { collection, getDocs, addDoc, deleteDoc, doc } from 'firebase/firestore';
+import { toast } from 'react-toastify';
+import { useAuth } from '../contexts/AuthContext';
+import { FaPlus } from "react-icons/fa";
+import { MdDelete } from "react-icons/md";
+import { IoArrowBack } from "react-icons/io5";
 
-const MySwal = withReactContent(Swal);
+const ResourceItems = () => {
+    const { categoryId, chapterId } = useParams();
+    const [items, setItems] = useState([]);
+    const [newItemName, setNewItemName] = useState('');
+    const [newItemLink, setNewItemLink] = useState('');
+    const [isAdding, setIsAdding] = useState(false);
+    const [loading, setLoading] = useState(true);
+    const { currentUser } = useAuth();
 
-function ResourceItems() {
-  const { categoryId, chapterId } = useParams();
-  const navigate = useNavigate();
-  const ITEMS_CACHE_KEY = `mathmate-cache-items-${categoryId}-${chapterId}`;
-  
-  const [items, setItems] = useState(() => JSON.parse(localStorage.getItem(ITEMS_CACHE_KEY)) || []);
-  const [isLoading, setIsLoading] = useState(true);
-  const { currentUser } = useAuth();
+    useEffect(() => {
+        const fetchItems = async () => {
+            setLoading(true);
+            try {
+                const itemsCollection = collection(db, "resources", categoryId, "chapters", chapterId, "items");
+                const querySnapshot = await getDocs(itemsCollection);
+                const itemsData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                setItems(itemsData);
+            } catch (error) {
+                console.error("Error fetching items: ", error);
+                toast.error("Failed to fetch resource items.");
+            } finally {
+                setLoading(false);
+            }
+        };
 
-  const fetchItems = async () => {
-    if (!categoryId || !chapterId) return;
-    if (items.length === 0) setIsLoading(true);
-    try {
-      const itemsRef = collection(db, `resources/${categoryId}/chapters/${chapterId}/resources`);
-      const querySnapshot = await getDocs(itemsRef);
-      const freshItems = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      setItems(freshItems);
-      localStorage.setItem(ITEMS_CACHE_KEY, JSON.stringify(freshItems));
-    } catch (error) {
-      console.error("Error fetching items (might be offline): ", error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchItems();
-  }, [categoryId, chapterId]);
-  
-  const handleOpenItemForm = (item = null) => {
-    const isEditing = !!item;
-    MySwal.fire({
-      title: isEditing ? 'Edit Resource Item' : 'Add New Resource Item',
-      html: `
-        <input id="swal-title" class="swal2-input" placeholder="Title" value="${item ? item.title : ''}">
-        <input id="swal-desc" class="swal2-input" placeholder="Description" value="${item ? item.description : ''}">
-        <input id="swal-url" class="swal2-input" placeholder="URL (https://...)" value="${item ? item.url : ''}">
-      `,
-      confirmButtonText: 'Save',
-      showCancelButton: true,
-      preConfirm: () => {
-        const title = document.getElementById('swal-title').value;
-        const url = document.getElementById('swal-url').value;
-        if (!title || !url) { Swal.showValidationMessage('Title and URL are required'); }
-        return { title, description: document.getElementById('swal-desc').value, url };
-      }
-    }).then(async (result) => {
-      if (result.isConfirmed) {
-        try {
-          if (isEditing) {
-            const itemRef = doc(db, `resources/${categoryId}/chapters/${chapterId}/resources`, item.id);
-            await updateDoc(itemRef, result.value);
-          } else {
-            const itemsRef = collection(db, `resources/${categoryId}/chapters/${chapterId}/resources`);
-            await addDoc(itemsRef, result.value);
-          }
-          fetchItems();
-          Swal.fire('Saved!', 'The resource has been saved.', 'success');
-        } catch(error) {
-          Swal.fire('Error!', 'Could not save the resource: ' + error.message, 'error');
-        }
-      }
-    });
-  };
-
-  const handleDeleteItem = (item) => {
-    MySwal.fire({
-      title: 'Delete Item?',
-      text: `Delete "${item.title}"?`,
-      icon: 'warning',
-      showCancelButton: true,
-      confirmButtonColor: '#d33',
-      confirmButtonText: 'Yes, delete it!'
-    }).then(async (result) => {
-      if (result.isConfirmed) {
-        const itemRef = doc(db, `resources/${categoryId}/chapters/${chapterId}/resources`, item.id);
-        await deleteDoc(itemRef);
         fetchItems();
-        Swal.fire('Deleted!', 'The resource has been deleted.', 'success');
-      }
-    });
-  };
+    }, [categoryId, chapterId]);
 
-  return (
-    <div className="page-container">
-      <div className="page-header-row">
-        <button onClick={() => navigate(-1)} className="back-button-page"><ArrowLeft /></button>
-        <h1 className="page-title">Resources</h1>
-        {currentUser && (
-            <button className="page-action-button" onClick={() => handleOpenItemForm()}><Plus size={24} /></button>
-        )}
-      </div>
-      {isLoading && items.length === 0 ? <p>Loading resources...</p> : (
-        <div className="list-container">
-          {items.map((item) => (
-            <div key={item.id} className="list-item-wrapper">
-              <div className="list-item" onClick={() => window.open(item.url, '_blank')}>
-                <div style={{display: 'flex', alignItems: 'center', gap: '16px'}}>
-                  <div className="resource-icon-container"><LinkIcon /></div>
-                  <div className="resource-details">
-                    <p className="resource-title">{item.title}</p>
-                    <p className="resource-description">{item.description}</p>
-                  </div>
-                </div>
-              </div>
-              {currentUser && (
-                <div className="list-item-actions">
-                  <button className="action-button edit-button" onClick={() => handleOpenItemForm(item)}><Pencil size={18} /></button>
-                  <button className="action-button delete-button" onClick={() => handleDeleteItem(item)}><Trash2 size={18} /></button>
-                </div>
-              )}
+    const handleSaveItem = async () => {
+        if (newItemName.trim() === '' || newItemLink.trim() === '') {
+            toast.error('Item name and link cannot be empty');
+            return;
+        }
+        try {
+            const itemsCollection = collection(db, "resources", categoryId, "chapters", chapterId, "items");
+            const docRef = await addDoc(itemsCollection, {
+                name: newItemName,
+                link: newItemLink,
+                createdAt: new Date()
+            });
+            setItems([...items, { id: docRef.id, name: newItemName, link: newItemLink }]);
+            setNewItemName('');
+            setNewItemLink('');
+            setIsAdding(false);
+            toast.success('Item added successfully!');
+        } catch (error) {
+            console.error("Error adding item: ", error);
+            toast.error('Failed to add item.');
+        }
+    };
+
+    const handleDelete = async (itemId) => {
+        if (window.confirm("Are you sure you want to delete this item?")) {
+            try {
+                await deleteDoc(doc(db, "resources", categoryId, "chapters", chapterId, "items", itemId));
+                setItems(items.filter(item => item.id !== itemId));
+                toast.success('Item deleted successfully!');
+            } catch (error) {
+                console.error("Error deleting item: ", error);
+                toast.error('Failed to delete item.');
+            }
+        }
+    };
+
+    return (
+        <div className="container mx-auto p-4">
+            <div className="flex justify-between items-center mb-4">
+                <Link to={`/resources/${categoryId}`} className="text-blue-500 hover:underline"><IoArrowBack size={24} /></Link>
+                <h1 className="text-2xl font-bold">Resource Items</h1>
+                {currentUser && (
+                    <button onClick={() => setIsAdding(true)} className="bg-blue-500 text-white p-2 rounded-full hover:bg-blue-600">
+                        <FaPlus />
+                    </button>
+                )}
             </div>
-          ))}
+
+            {loading ? <p>Loading items...</p> : (
+                <div>
+                    {isAdding && (
+                        <div className="mb-4 p-4 border rounded shadow">
+                            <input
+                                type="text"
+                                value={newItemName}
+                                onChange={(e) => setNewItemName(e.target.value)}
+                                placeholder="Item name"
+                                className="border p-2 w-full mb-2"
+                            />
+                            <input
+                                type="url"
+                                value={newItemLink}
+                                onChange={(e) => setNewItemLink(e.target.value)}
+                                placeholder="Item link (URL)"
+                                className="border p-2 w-full mb-2"
+                            />
+                            <button onClick={handleSaveItem} className="bg-green-500 text-white p-2 rounded mr-2">Save</button>
+                            <button onClick={() => setIsAdding(false)} className="bg-gray-500 text-white p-2 rounded">Cancel</button>
+                        </div>
+                    )}
+                    {items.length > 0 ? (
+                        <ul className="space-y-2">
+                            {items.map(item => (
+                                <li key={item.id} className="flex justify-between items-center p-3 bg-gray-100 rounded shadow-sm">
+                                    <a 
+                                        href={item.link} 
+                                        target="_blank" 
+                                        rel="noopener noreferrer"
+                                        className="cursor-pointer font-semibold flex-grow hover:text-blue-600"
+                                    >
+                                        {item.name}
+                                    </a>
+                                    {currentUser && (
+                                        <button onClick={() => handleDelete(item.id)} className="text-red-500 hover:text-red-700 ml-4"><MdDelete size={20} /></button>
+                                    )}
+                                </li>
+                            ))}
+                        </ul>
+                    ) : (
+                        <p>No items found. Add a new one to get started.</p>
+                    )}
+                </div>
+            )}
         </div>
-      )}
-    </div>
-  );
-}
+    );
+};
 
 export default ResourceItems;

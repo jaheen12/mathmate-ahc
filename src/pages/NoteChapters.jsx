@@ -1,163 +1,162 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useParams, useNavigate } from 'react-router-dom';
-import { ChevronRight, ArrowLeft, Plus, Pencil, Trash2, DownloadCloud, Loader, CheckCircle } from 'lucide-react';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import { db } from '../firebaseConfig';
-import { collection, getDocs, doc, getDoc, setDoc, deleteDoc, updateDoc } from 'firebase/firestore';
-import { useAuth } from '../AuthContext';
-import Swal from 'sweetalert2';
-import withReactContent from 'sweetalert2-react-content';
-import { downloadChapter, getDownloadStatus } from '../utils/downloadManager';
+import { collection, getDocs, addDoc, deleteDoc, doc, updateDoc } from 'firebase/firestore';
+import { toast } from 'react-toastify';
+import { useAuth } from '../contexts/AuthContext';
+import { FaPlus } from "react-icons/fa";
+import { MdDelete, MdEdit } from "react-icons/md";
+import { IoArrowBack } from "react-icons/io5";
 
-const MySwal = withReactContent(Swal);
+const NoteChapters = () => {
+    const { subjectId } = useParams();
+    const [chapters, setChapters] = useState([]);
+    const [newChapterName, setNewChapterName] = useState('');
+    const [isAdding, setIsAdding] = useState(false);
+    const [loading, setLoading] = useState(true);
+    const [isRenaming, setIsRenaming] = useState(false);
+    const [renamingChapterId, setRenamingChapterId] = useState(null);
+    const [renamingChapterName, setRenamingChapterName] = useState('');
+    const navigate = useNavigate();
+    const { currentUser } = useAuth();
 
-function NoteChapters() {
-  const { subjectId } = useParams();
-  const navigate = useNavigate();
-  const CHAPTERS_CACHE_KEY = `mathmate-cache-note-chapters-${subjectId}`;
-  
-  const [chapters, setChapters] = useState(() => JSON.parse(localStorage.getItem(CHAPTERS_CACHE_KEY)) || []);
-  const [subjectName, setSubjectName] = useState(subjectId);
-  const [isLoading, setIsLoading] = useState(chapters.length === 0);
-  const { currentUser } = useAuth();
-  const [downloadStatus, setDownloadStatus] = useState(getDownloadStatus);
+    useEffect(() => {
+        const fetchChapters = async () => {
+            setLoading(true);
+            try {
+                const chaptersCollection = collection(db, "official_notes", subjectId, "chapters");
+                const querySnapshot = await getDocs(chaptersCollection);
+                const chaptersData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                setChapters(chaptersData);
+            } catch (error) {
+                console.error("Error fetching chapters: ", error);
+                toast.error("Failed to fetch chapters.");
+            } finally {
+                setLoading(false);
+            }
+        };
 
-  const fetchChapters = async () => {
-    if (!subjectId) return;
-    try {
-      const subjectRef = doc(db, 'official_notes', subjectId);
-      const subjectSnap = await getDoc(subjectRef);
-      if (subjectSnap.exists()) {
-        setSubjectName(subjectSnap.data().name);
-      }
-      
-      const chaptersRef = collection(db, `official_notes/${subjectId}/chapters`);
-      const querySnapshot = await getDocs(chaptersRef);
-      const freshChaps = querySnapshot.docs.map(doc => ({
-        id: doc.id,
-        name: doc.data().name
-      })).sort((a,b) => a.name.localeCompare(b.name));
-      
-      if (JSON.stringify(freshChaps) !== JSON.stringify(chapters)) {
-        setChapters(freshChaps);
-        localStorage.setItem(CHAPTERS_CACHE_KEY, JSON.stringify(freshChaps));
-      }
-    } catch (error) {
-      console.error("Error fetching chapters (might be offline): ", error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+        fetchChapters();
+    }, [subjectId]);
 
-  useEffect(() => {
-    setIsLoading(chapters.length === 0);
-    if (navigator.onLine) {
-      fetchChapters();
-    } else {
-      setIsLoading(false);
-    }
-  }, [subjectId]);
-  
-  const handleAddChapter = () => {
-    MySwal.fire({
-        title: 'Add New Chapter',
-        input: 'text',
-        inputPlaceholder: 'Enter chapter name',
-        showCancelButton: true,
-        confirmButtonText: 'Create'
-    }).then(async (result) => {
-        if(result.isConfirmed && result.value) {
-            const chapterId = result.value.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
-            const chapterRef = doc(db, `official_notes/${subjectId}/chapters`, chapterId);
-            await setDoc(chapterRef, { name: result.value });
-            fetchChapters();
-            Swal.fire('Created!', 'The new chapter has been added.', 'success');
+    const handleSaveChapter = async () => {
+        if (newChapterName.trim() === '') {
+            toast.error('Chapter name cannot be empty');
+            return;
         }
-    });
-  };
-  
-  const handleEditChapter = (chap) => {
-    MySwal.fire({
-        title: 'Rename Chapter',
-        input: 'text',
-        inputValue: chap.name,
-        showCancelButton: true
-    }).then(async (result) => {
-        if(result.isConfirmed && result.value) {
-            const chapterRef = doc(db, `official_notes/${subjectId}/chapters`, chap.id);
-            await updateDoc(chapterRef, { name: result.value });
-            fetchChapters();
-            Swal.fire('Renamed!', 'The chapter name has been updated.', 'success');
+        try {
+            const chaptersCollection = collection(db, "official_notes", subjectId, "chapters");
+            const docRef = await addDoc(chaptersCollection, {
+                name: newChapterName,
+                createdAt: new Date()
+            });
+            setChapters([...chapters, { id: docRef.id, name: newChapterName }]);
+            setNewChapterName('');
+            setIsAdding(false);
+            toast.success('Chapter added successfully!');
+        } catch (error) {
+            console.error("Error adding chapter: ", error);
+            toast.error('Failed to add chapter.');
         }
-    });
-  };
+    };
 
-  const handleDeleteChapter = (chap) => {
-    MySwal.fire({
-      title: 'Are you sure?',
-      text: `This will delete the chapter "${chap.name}" and ALL notes inside it.`,
-      icon: 'warning',
-      showCancelButton: true,
-      confirmButtonColor: '#d33',
-      confirmButtonText: 'Yes, delete it!'
-    }).then(async (result) => {
-        if(result.isConfirmed) {
-            const chapterRef = doc(db, `official_notes/${subjectId}/chapters`, chap.id);
-            await deleteDoc(chapterRef);
-            fetchChapters();
-            Swal.fire('Deleted!', 'The chapter has been deleted.', 'success');
+    const handleDelete = async (chapterId) => {
+        if (window.confirm("Are you sure you want to delete this chapter?")) {
+            try {
+                await deleteDoc(doc(db, "official_notes", subjectId, "chapters", chapterId));
+                setChapters(chapters.filter(chapter => chapter.id !== chapterId));
+                toast.success('Chapter deleted successfully!');
+            } catch (error) {
+                console.error("Error deleting chapter: ", error);
+                toast.error('Failed to delete chapter.');
+            }
         }
-    });
-  };
+    };
+    
+    const handleRename = (chapter) => {
+        setIsRenaming(true);
+        setRenamingChapterId(chapter.id);
+        setRenamingChapterName(chapter.name);
+    };
 
-  const handleDownload = (e, chapterId) => {
-    e.preventDefault();
-    e.stopPropagation();
-    downloadChapter(subjectId, chapterId, (newStatus) => {
-      setDownloadStatus({ ...newStatus });
-    });
-  };
+    const handleSaveRename = async () => {
+        if (renamingChapterName.trim() === '') {
+            toast.error('Chapter name cannot be empty');
+            return;
+        }
+        try {
+            const chapterDoc = doc(db, "official_notes", subjectId, "chapters", renamingChapterId);
+            await updateDoc(chapterDoc, { name: renamingChapterName });
+            setChapters(chapters.map(c => c.id === renamingChapterId ? { ...c, name: renamingChapterName } : c));
+            setIsRenaming(false);
+            setRenamingChapterId(null);
+            toast.success('Chapter renamed successfully!');
+        } catch (error) {
+            console.error("Error renaming chapter: ", error);
+            toast.error('Failed to rename chapter.');
+        }
+    };
 
-  return (
-    <div className="page-container">
-      <div className="page-header-row">
-        <button onClick={() => navigate(-1)} className="back-button-page"><ArrowLeft /></button>
-        <h1 className="page-title">{subjectName}</h1>
-        {currentUser && (
-            <button className="page-action-button" onClick={handleAddChapter}><Plus size={24} /></button>
-        )}
-      </div>
-      {isLoading ? <p>Loading chapters...</p> : (
-        <div className="list-container">
-          {chapters.length > 0 ? chapters.map(chapter => {
-            const status = downloadStatus[`${subjectId}_${chapter.id}`];
-            return (
-              <div key={chapter.id} className="list-item-wrapper">
-                  <Link to={`/notes/${subjectId}/${chapter.id}`} className="list-item">
-                      <span>{chapter.name}</span>
-                      <div className="list-item-right-content">
-                        {status === 'downloading' && <Loader className="status-icon spinning" size={20} />}
-                        {status === 'downloaded' && <CheckCircle className="status-icon downloaded" size={20} />}
-                        {!status && navigator.onLine && (
-                          <button className="download-button" onClick={(e) => handleDownload(e, chapter.id)}>
-                            <DownloadCloud size={20} />
-                          </button>
-                        )}
-                        <ChevronRight />
-                      </div>
-                  </Link>
-                  {currentUser && (
-                      <div className="list-item-actions">
-                          <button className="action-button edit-button" onClick={() => handleEditChapter(chapter)}><Pencil size={18} /></button>
-                          <button className="action-button delete-button" onClick={() => handleDeleteChapter(chapter)}><Trash2 size={18} /></button>
-                      </div>
-                  )}
-              </div>
-            );
-          }) : <p className="empty-message">No chapters yet. Add one!</p>}
+    return (
+        <div className="container mx-auto p-4">
+            <div className="flex justify-between items-center mb-4">
+                <Link to="/notes" className="text-blue-500 hover:underline"><IoArrowBack size={24} /></Link>
+                <h1 className="text-2xl font-bold">Chapters</h1>
+                {currentUser && (
+                    <button onClick={() => setIsAdding(true)} className="bg-blue-500 text-white p-2 rounded-full hover:bg-blue-600">
+                        <FaPlus />
+                    </button>
+                )}
+            </div>
+
+            {loading ? <p>Loading chapters...</p> : (
+                <div>
+                    {isAdding && (
+                        <div className="mb-4 p-4 border rounded shadow">
+                            <input
+                                type="text"
+                                value={newChapterName}
+                                onChange={(e) => setNewChapterName(e.target.value)}
+                                placeholder="New chapter name"
+                                className="border p-2 w-full mb-2"
+                            />
+                            <button onClick={handleSaveChapter} className="bg-green-500 text-white p-2 rounded mr-2">Save</button>
+                            <button onClick={() => setIsAdding(false)} className="bg-gray-500 text-white p-2 rounded">Cancel</button>
+                        </div>
+                    )}
+                    {isRenaming && (
+                         <div className="mb-4 p-4 border rounded shadow">
+                            <input type="text" value={renamingChapterName} onChange={(e) => setRenamingChapterName(e.target.value)} className="border p-2 w-full mb-2" />
+                            <button onClick={handleSaveRename} className="bg-green-500 text-white p-2 rounded mr-2">Save Rename</button>
+                            <button onClick={() => setIsRenaming(false)} className="bg-gray-500 text-white p-2 rounded">Cancel</button>
+                        </div>
+                    )}
+                    {chapters.length > 0 ? (
+                        <ul className="space-y-2">
+                            {chapters.map(chapter => (
+                                <li key={chapter.id} className="flex justify-between items-center p-3 bg-gray-100 rounded shadow-sm">
+                                    <span 
+                                        onClick={() => navigate(`/notes/${subjectId}/${chapter.id}`)} 
+                                        className="cursor-pointer font-semibold flex-grow hover:text-blue-600"
+                                    >
+                                        {chapter.name}
+                                    </span>
+                                    {currentUser && (
+                                        <div className="flex items-center">
+                                            <button onClick={() => handleRename(chapter)} className="text-blue-500 hover:text-blue-700 mr-2"><MdEdit size={20} /></button>
+                                            <button onClick={() => handleDelete(chapter.id)} className="text-red-500 hover:text-red-700"><MdDelete size={20} /></button>
+                                        </div>
+                                    )}
+                                </li>
+                            ))}
+                        </ul>
+                    ) : (
+                        <p>No chapters found. Add a new one to get started.</p>
+                    )}
+                </div>
+            )}
         </div>
-      )}
-    </div>
-  );
-}
+    );
+};
 
 export default NoteChapters;

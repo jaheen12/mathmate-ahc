@@ -1,135 +1,159 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import { ChevronRight, Plus, Pencil, Trash2 } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
 import { db } from '../firebaseConfig';
-import { collection, getDocs, doc, setDoc, deleteDoc } from 'firebase/firestore';
-import { useAuth } from '../AuthContext';
-import Swal from 'sweetalert2';
-import withReactContent from 'sweetalert2-react-content';
+import { collection, getDocs, addDoc, deleteDoc, doc, updateDoc } from 'firebase/firestore';
+import { toast } from 'react-toastify';
+import { useAuth } from '../contexts/AuthContext';
+import { FaPlus } from "react-icons/fa";
+import { MdDelete, MdEdit } from "react-icons/md";
+import { IoArrowBack } from "react-icons/io5";
 
-const MySwal = withReactContent(Swal);
-const CATEGORIES_CACHE_KEY = 'mathmate-cache-categories';
+const ResourceCategories = () => {
+    const [categories, setCategories] = useState([]);
+    const [newCategoryName, setNewCategoryName] = useState('');
+    const [isAdding, setIsAdding] = useState(false);
+    const [loading, setLoading] = useState(true);
+    const [isRenaming, setIsRenaming] = useState(false);
+    const [renamingCategoryId, setRenamingCategoryId] = useState(null);
+    const [renamingCategoryName, setRenamingCategoryName] = useState('');
+    const navigate = useNavigate();
+    const { currentUser } = useAuth();
 
-function ResourceCategories() {
-  const [categories, setCategories] = useState(() => JSON.parse(localStorage.getItem(CATEGORIES_CACHE_KEY)) || []);
-  const [isLoading, setIsLoading] = useState(true);
-  const { currentUser } = useAuth();
+    useEffect(() => {
+        const fetchCategories = async () => {
+            setLoading(true);
+            try {
+                const querySnapshot = await getDocs(collection(db, "resources"));
+                const categoriesData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                setCategories(categoriesData);
+            } catch (error) {
+                console.error("Error fetching categories: ", error);
+                toast.error("Failed to fetch categories.");
+            } finally {
+                setLoading(false);
+            }
+        };
 
-  const fetchCategories = async () => {
-    // Only show the main loader if there's no cached data at all
-    if (categories.length === 0) {
-      setIsLoading(true);
-    }
-    
-    try {
-      const querySnapshot = await getDocs(collection(db, "resources"));
-      const freshCats = querySnapshot.docs.map(doc => ({
-        id: doc.id,
-        name: doc.data().name
-      })).sort((a, b) => a.name.localeCompare(b.name));
-      
-      setCategories(freshCats);
-      localStorage.setItem(CATEGORIES_CACHE_KEY, JSON.stringify(freshCats));
-    } catch (error) {
-      console.error("Error fetching categories (might be offline): ", error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+        fetchCategories();
+    }, []);
 
-  useEffect(() => {
-    fetchCategories();
-  }, []);
-
-  const handleAddCategory = () => {
-    MySwal.fire({
-      title: 'Add New Category',
-      input: 'text',
-      inputPlaceholder: 'Enter category name',
-      showCancelButton: true,
-      confirmButtonText: 'Create'
-    }).then(async (result) => {
-      if (result.isConfirmed && result.value) {
-        const categoryId = result.value.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
-        const categoryRef = doc(db, 'resources', categoryId);
-        await setDoc(categoryRef, { name: result.value });
-        fetchCategories(); // Refresh from cloud
-        Swal.fire('Created!', 'The new category has been added.', 'success');
-      }
-    });
-  };
-
-  const handleRenameCategory = (cat) => {
-    MySwal.fire({
-      title: 'Rename Category',
-      input: 'text',
-      inputValue: cat.name,
-      showCancelButton: true
-    }).then(async (result) => {
-        if(result.isConfirmed && result.value) {
-            const categoryRef = doc(db, 'resources', cat.id);
-            await setDoc(categoryRef, { name: result.value });
-            fetchCategories(); // Refresh from cloud
-            Swal.fire('Renamed!', 'The category name has been updated.', 'success');
+    const handleSaveCategory = async () => {
+        if (newCategoryName.trim() === '') {
+            toast.error('Category name cannot be empty');
+            return;
         }
-    });
-  };
+        try {
+            const docRef = await addDoc(collection(db, "resources"), {
+                name: newCategoryName,
+                createdAt: new Date()
+            });
+            setCategories([...categories, { id: docRef.id, name: newCategoryName }]);
+            setNewCategoryName('');
+            setIsAdding(false);
+            toast.success('Category added successfully!');
+        } catch (error) {
+            console.error("Error adding category: ", error);
+            toast.error('Failed to add category.');
+        }
+    };
 
-  const handleDeleteCategory = (cat) => {
-    MySwal.fire({
-      title: 'Are you sure?',
-      text: `This will delete "${cat.name}" and ALL content inside. This cannot be undone.`,
-      icon: 'warning',
-      showCancelButton: true,
-      confirmButtonColor: '#d33',
-      confirmButtonText: 'Yes, delete it!'
-    }).then(async (result) => {
-      if (result.isConfirmed) {
-        // Note: For a real app, deleting subcollections requires a Cloud Function.
-        // This will only delete the main category document.
-        const categoryRef = doc(db, 'resources', cat.id);
-        await deleteDoc(categoryRef);
-        fetchCategories(); // Refresh from cloud
-        Swal.fire('Deleted!', 'The category has been deleted.', 'success');
-      }
-    });
-  };
+    const handleDelete = async (categoryId) => {
+        if (window.confirm("Are you sure you want to delete this category?")) {
+            try {
+                await deleteDoc(doc(db, "resources", categoryId));
+                setCategories(categories.filter(cat => cat.id !== categoryId));
+                toast.success('Category deleted successfully!');
+            } catch (error) {
+                console.error("Error deleting category: ", error);
+                toast.error('Failed to delete category.');
+            }
+        }
+    };
+    
+    const handleRename = (category) => {
+        setIsRenaming(true);
+        setRenamingCategoryId(category.id);
+        setRenamingCategoryName(category.name);
+    };
 
-  return (
-    <div className="page-container">
-      <div className="page-header-row">
-        <h1 className="page-title">Resource Categories</h1>
-        {currentUser && (
-          <button className="page-action-button" onClick={handleAddCategory}>
-            <Plus size={24} />
-          </button>
-        )}
-      </div>
+    const handleSaveRename = async () => {
+        if (renamingCategoryName.trim() === '') {
+            toast.error('Category name cannot be empty');
+            return;
+        }
+        try {
+            const categoryDoc = doc(db, "resources", renamingCategoryId);
+            await updateDoc(categoryDoc, { name: renamingCategoryName });
+            setCategories(categories.map(c => c.id === renamingCategoryId ? { ...c, name: renamingCategoryName } : c));
+            setIsRenaming(false);
+            setRenamingCategoryId(null);
+            toast.success('Category renamed successfully!');
+        } catch (error) {
+            console.error("Error renaming category: ", error);
+            toast.error('Failed to rename category.');
+        }
+    };
 
-      {isLoading && categories.length === 0 ? <p>Loading categories...</p> : (
-        <div className="list-container">
-          {categories.map(category => (
-            <div key={category.id} className="list-item-wrapper">
-              <Link to={`/resources/${category.id}`} className="list-item">
-                <span>{category.name}</span>
-                <ChevronRight />
-              </Link>
-              {currentUser && (
-                <div className="list-item-actions">
-                  <button className="action-button edit-button" onClick={() => handleRenameCategory(category)}>
-                    <Pencil size={18} />
-                  </button>
-                  <button className="action-button delete-button" onClick={() => handleDeleteCategory(category)}>
-                    <Trash2 size={18} />
-                  </button>
-                </div>
-              )}
+    return (
+        <div className="container mx-auto p-4">
+            <div className="flex justify-between items-center mb-4">
+                <Link to="/profile" className="text-blue-500 hover:underline"><IoArrowBack size={24} /></Link>
+                <h1 className="text-2xl font-bold">Resource Categories</h1>
+                {currentUser && (
+                    <button onClick={() => setIsAdding(true)} className="bg-blue-500 text-white p-2 rounded-full hover:bg-blue-600">
+                        <FaPlus />
+                    </button>
+                )}
             </div>
-          ))}
+
+            {loading ? <p>Loading categories...</p> : (
+                <div>
+                    {isAdding && (
+                        <div className="mb-4 p-4 border rounded shadow">
+                            <input
+                                type="text"
+                                value={newCategoryName}
+                                onChange={(e) => setNewCategoryName(e.target.value)}
+                                placeholder="New category name"
+                                className="border p-2 w-full mb-2"
+                            />
+                            <button onClick={handleSaveCategory} className="bg-green-500 text-white p-2 rounded mr-2">Save</button>
+                            <button onClick={() => setIsAdding(false)} className="bg-gray-500 text-white p-2 rounded">Cancel</button>
+                        </div>
+                    )}
+                    {isRenaming && (
+                         <div className="mb-4 p-4 border rounded shadow">
+                            <input type="text" value={renamingCategoryName} onChange={(e) => setRenamingCategoryName(e.target.value)} className="border p-2 w-full mb-2" />
+                            <button onClick={handleSaveRename} className="bg-green-500 text-white p-2 rounded mr-2">Save Rename</button>
+                            <button onClick={() => setIsRenaming(false)} className="bg-gray-500 text-white p-2 rounded">Cancel</button>
+                        </div>
+                    )}
+                    {categories.length > 0 ? (
+                        <ul className="space-y-2">
+                            {categories.map(category => (
+                                <li key={category.id} className="flex justify-between items-center p-3 bg-gray-100 rounded shadow-sm">
+                                    <span 
+                                        onClick={() => navigate(`/resources/${category.id}`)} 
+                                        className="cursor-pointer font-semibold flex-grow hover:text-blue-600"
+                                    >
+                                        {category.name}
+                                    </span>
+                                    {currentUser && (
+                                        <div className="flex items-center">
+                                            <button onClick={() => handleRename(category)} className="text-blue-500 hover:text-blue-700 mr-2"><MdEdit size={20} /></button>
+                                            <button onClick={() => handleDelete(category.id)} className="text-red-500 hover:text-red-700"><MdDelete size={20} /></button>
+                                        </div>
+                                    )}
+                                </li>
+                            ))}
+                        </ul>
+                    ) : (
+                        <p>No categories found. Add a new one to get started.</p>
+                    )}
+                </div>
+            )}
         </div>
-      )}
-    </div>
-  );
-}
+    );
+};
 
 export default ResourceCategories;

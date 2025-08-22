@@ -1,244 +1,130 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Plus, Pencil, Trash2, Search, Paperclip } from 'lucide-react';
-import { v4 as uuidv4 } from 'uuid';
-import Swal from 'sweetalert2';
-import withReactContent from 'sweetalert2-react-content';
-import { Camera, CameraResultType, CameraSource } from '@capacitor/camera';
-import { Filesystem, Directory } from '@capacitor/filesystem';
-import { Capacitor } from '@capacitor/core';
+import React, { useState, useEffect } from 'react';
+import { useParams, useNavigate, Link } from 'react-router-dom';
+import { db } from '../firebaseConfig';
+import { collection, getDocs, addDoc, deleteDoc, doc } from 'firebase/firestore';
+import { toast } from 'react-toastify';
+import { useAuth } from '../contexts/AuthContext';
+import { FaPlus } from "react-icons/fa";
+import { MdDelete } from "react-icons/md";
+import { IoArrowBack } from "react-icons/io5";
 
-const MySwal = withReactContent(Swal);
-const PERSONAL_NOTES_DB_KEY = 'mathmate-personal-notes-db';
+const PersonalNoteItems = () => {
+    const { subjectId, chapterId } = useParams();
+    const [items, setItems] = useState([]);
+    const [newItemName, setNewItemName] = useState('');
+    const [isAdding, setIsAdding] = useState(false);
+    const [loading, setLoading] = useState(true);
+    const navigate = useNavigate();
+    const { currentUser } = useAuth();
 
-const getInitialDb = () => {
-  const db = localStorage.getItem(PERSONAL_NOTES_DB_KEY);
-  return db ? JSON.parse(db) : {};
-};
+    useEffect(() => {
+        const fetchItems = async () => {
+            if (!currentUser) {
+                setLoading(false);
+                return;
+            }
 
-const saveDb = (db) => {
-  localStorage.setItem(PERSONAL_NOTES_DB_KEY, JSON.stringify(db));
-};
-
-function PersonalNoteItems() {
-  const { subjectId, chapterId } = useParams();
-  const navigate = useNavigate();
-  const [notes, setNotes] = useState([]);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [modalAttachments, setModalAttachments] = useState([]);
-
-  useEffect(() => {
-    const db = getInitialDb();
-    const chapterNotes = db[chapterId] || [];
-    setNotes(chapterNotes);
-  }, [chapterId]);
-
-  const handleSaveNote = (noteData) => {
-    const db = getInitialDb();
-    let chapterNotes = db[chapterId] || [];
-    if (noteData.id) {
-      chapterNotes = chapterNotes.map(n => n.id === noteData.id ? noteData : n);
-    } else {
-      chapterNotes.push({ ...noteData, id: uuidv4() });
-    }
-    db[chapterId] = chapterNotes;
-    saveDb(db);
-    setNotes(chapterNotes);
-  };
-
-  const handleDeleteNote = (noteId) => {
-    MySwal.fire({
-      title: 'Delete this note?', text: "This cannot be undone.", icon: 'warning',
-      showCancelButton: true, confirmButtonColor: '#d33', confirmButtonText: 'Yes, delete it!'
-    }).then(result => {
-      if (result.isConfirmed) {
-        const db = getInitialDb();
-        let chapterNotes = db[chapterId] || [];
-        const updatedNotes = chapterNotes.filter(n => n.id !== noteId);
-        db[chapterId] = updatedNotes;
-        saveDb(db);
-        setNotes(updatedNotes);
-        Swal.fire('Deleted!', 'Your personal note has been deleted.', 'success');
-      }
-    });
-  };
-
-  const saveFile = async (photo) => {
-    const readAsBase64 = async (photo) => {
-      if (Capacitor.isNativePlatform()) {
-        const file = await Filesystem.readFile({ path: photo.path });
-        return `data:image/jpeg;base64,${file.data}`;
-      } else {
-        const response = await fetch(photo.webPath);
-        const blob = await response.blob();
-        return new Promise((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onerror = reject;
-          reader.onload = () => { resolve(reader.result); };
-          reader.readAsDataURL(blob);
-        });
-      }
-    };
-    const base64Data = await readAsBase64(photo);
-    const fileName = new Date().getTime() + '.jpeg';
-    const savedFile = await Filesystem.writeFile({
-      path: fileName,
-      data: base64Data,
-      directory: Directory.Data
-    });
-    return Capacitor.convertFileSrc(savedFile.uri);
-  };
-
-  const handleAttachPhoto = async (note) => {
-    try {
-      const image = await Camera.getPhoto({
-        quality: 90,
-        allowEditing: false,
-        resultType: CameraResultType.Uri,
-        source: CameraSource.Prompt
-      });
-      if (image) {
-        // Show a loading indicator in the modal
-        const attachmentList = document.getElementById('attachment-list');
-        if (attachmentList) {
-            attachmentList.innerHTML += '<p id="loading-photo">Saving photo...</p>';
-        }
-
-        const savedImageUri = await saveFile(image);
-        const newAttachment = { id: uuidv4(), type: 'image', uri: savedImageUri, name: 'Image' };
-        const attachments = (note ? note.attachments : modalAttachments) || [];
-        const updatedAttachments = [...attachments, newAttachment];
-        
-        // This is a crucial change to correctly update the attachments for the currently open modal
-        setModalAttachments(updatedAttachments);
-        handleOpenNoteForm(note, updatedAttachments);
-      }
-    } catch (error) {
-      console.error("CAPACITOR CAMERA ERROR:", JSON.stringify(error));
-      if (error.message !== "User cancelled photos app") {
-        Swal.fire('Error', 'Could not get photo. Please ensure app has permissions in your phone settings.', 'error');
-      }
-    }
-  };
-
-  const handleOpenNoteForm = (note = null, attachments) => {
-    const isEditing = !!note;
-    const currentAttachments = attachments !== undefined ? attachments : (note?.attachments || []);
-    setModalAttachments(currentAttachments);
-
-    MySwal.fire({
-      title: isEditing ? 'Edit Personal Note' : 'Add Personal Note',
-      html: `
-        <input id="swal-title" class="swal2-input" placeholder="Note Title" value="${note ? note.title : ''}">
-        <input id="swal-topic" class="swal2-input" placeholder="Topic" value="${note ? note.topic : ''}">
-        <input type="date" id="swal-date" class="swal2-input" value="${note ? note.noteDate : ''}">
-        <textarea id="swal-content" class="swal2-textarea" placeholder="Note content...">${note ? note.content : ''}</textarea>
-        <div class="attachment-section">
-          <div class="attachment-buttons">
-            <button id="attach-photo-btn" class="swal2-styled">Attach Photo</button>
-            <button id="attach-pdf-btn" class="swal2-styled" disabled>Attach PDF (soon)</button>
-          </div>
-          <div id="attachment-list">
-            ${currentAttachments.map(att => `
-              <div class="attachment-item">
-                ${att.type === 'image' ? `<img src="${att.uri}" width="60" height="60" />` : ''}
-                <span>${att.name}</span>
-              </div>
-            `).join('')}
-          </div>
-        </div>
-      `,
-      confirmButtonText: 'Save',
-      showCancelButton: true,
-      didOpen: () => {
-        document.getElementById('attach-photo-btn').addEventListener('click', () => handleAttachPhoto(note));
-      },
-      preConfirm: () => {
-        const title = document.getElementById('swal-title').value;
-        if (!title) { Swal.showValidationMessage('Title is required'); }
-        return {
-          id: note ? note.id : null,
-          title,
-          topic: document.getElementById('swal-topic').value,
-          noteDate: document.getElementById('swal-date').value,
-          content: document.getElementById('swal-content').value,
+            setLoading(true);
+            try {
+                const itemsCollection = collection(db, "personal_notes", subjectId, "chapters", chapterId, "items");
+                const querySnapshot = await getDocs(itemsCollection);
+                const itemsData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                setItems(itemsData);
+            } catch (error) {
+                console.error("Error fetching items: ", error);
+                toast.error("Failed to fetch note items.");
+            } finally {
+                setLoading(false);
+            }
         };
-      }
-    }).then(result => {
-      if (result.isConfirmed) {
-        const finalData = { ...result.value, attachments: modalAttachments };
-        handleSaveNote(finalData);
-        Swal.fire('Saved!', 'Your note has been saved on this device.', 'success');
-      }
-      setModalAttachments([]);
-    });
-  };
 
-  const handleViewNote = (note) => {
-    const attachmentsHtml = (note.attachments || []).map(att => 
-      att.type === 'image' ? `<img src="${att.uri}" class="viewer-attachment-image" />` : ''
-    ).join('');
-    MySwal.fire({
-      title: `<strong>${note.title}</strong>`,
-      html: `
-        <div class="note-viewer-content">
-          <p class="note-viewer-subtitle"><strong>Topic:</strong> ${note.topic || 'N/A'}</p>
-          <p class="note-viewer-subtitle"><strong>Date:</strong> ${note.noteDate || 'N/A'}</p>
-          <hr/>
-          <div class="note-viewer-body">${note.content}</div>
-          ${attachmentsHtml ? `<hr/><h4 class="attachment-title">Attachments</h4><div class="viewer-attachment-list">${attachmentsHtml}</div>` : ''}
-        </div>
-      `,
-      confirmButtonText: 'Close',
-      customClass: { popup: 'note-viewer-popup' }
-    });
-  };
+        fetchItems();
+    }, [subjectId, chapterId, currentUser]);
 
-  const filteredNotes = useMemo(() => {
-    return notes.filter(note => 
-      (note.title?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
-      (note.topic?.toLowerCase() || '').includes(searchTerm.toLowerCase())
-    );
-  }, [notes, searchTerm]);
+    const handleSaveItem = async () => {
+        if (newItemName.trim() === '') {
+            toast.error('Item name cannot be empty');
+            return;
+        }
+        try {
+            const itemsCollection = collection(db, "personal_notes", subjectId, "chapters", chapterId, "items");
+            const docRef = await addDoc(itemsCollection, {
+                name: newItemName,
+                createdAt: new Date()
+            });
+            setItems([...items, { id: docRef.id, name: newItemName }]);
+            setNewItemName('');
+            setIsAdding(false);
+            toast.success('Item added successfully!');
+        } catch (error) {
+            console.error("Error adding item: ", error);
+            toast.error('Failed to add item.');
+        }
+    };
 
-  return (
-    <div className="page-container">
-      <div className="page-header-row">
-        <button onClick={() => navigate(-1)} className="back-button-page"><ArrowLeft /></button>
-        <h1 className="page-title">My Notes</h1>
-        <button className="page-action-button" onClick={() => handleOpenNoteForm(null, [])}><Plus size={24} /></button>
-      </div>
-      <div className="note-controls">
-        <div className="search-wrapper">
-          <Search size={20} className="search-icon" />
-          <input type="text" placeholder="Search my notes..." className="search-bar"
-            value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
-        </div>
-      </div>
-      <div className="list-container">
-        {filteredNotes.length > 0 ? filteredNotes.map((note) => (
-          <div key={note.id} className="list-item-wrapper">
-            <div className="list-item" onClick={() => handleViewNote(note)}>
-              <div>
-                <p className="note-title">{note.title}</p>
-                <p className="note-subtitle">Topic: {note.topic || 'N/A'} | Date: {note.noteDate || 'N/A'}</p>
-                {note.attachments && note.attachments.length > 0 && (
-                  <div className="attachment-indicator">
-                    <Paperclip size={14} />
-                    <span>{note.attachments.length} Attachment(s)</span>
-                  </div>
+    const handleDelete = async (itemId) => {
+        if (window.confirm("Are you sure you want to delete this item?")) {
+            try {
+                await deleteDoc(doc(db, "personal_notes", subjectId, "chapters", chapterId, "items", itemId));
+                setItems(items.filter(item => item.id !== itemId));
+                toast.success('Item deleted successfully!');
+            } catch (error) {
+                console.error("Error deleting item: ", error);
+                toast.error('Failed to delete item.');
+            }
+        }
+    };
+
+    return (
+        <div className="container mx-auto p-4">
+            <div className="flex justify-between items-center mb-4">
+                <Link to={`/personal-notes/${subjectId}`} className="text-blue-500 hover:underline"><IoArrowBack size={24} /></Link>
+                <h1 className="text-2xl font-bold">My Note Items</h1>
+                {currentUser && (
+                    <button onClick={() => setIsAdding(true)} className="bg-blue-500 text-white p-2 rounded-full hover:bg-blue-600">
+                        <FaPlus />
+                    </button>
                 )}
-              </div>
             </div>
-            <div className="list-item-actions">
-              <button className="action-button edit-button" onClick={(e) => { e.stopPropagation(); handleOpenNoteForm(note); }}><Pencil size={18} /></button>
-              <button className="action-button delete-button" onClick={(e) => { e.stopPropagation(); handleDeleteNote(note.id); }}><Trash2 size={18} /></button>
-            </div>
-          </div>
-        )) : <p className="empty-message">You have no notes for this chapter. Add one!</p>}
-      </div>
-    </div>
-  );
-}
+
+            {loading ? <p>Loading items...</p> : (
+                <div>
+                    {isAdding && (
+                        <div className="mb-4 p-4 border rounded shadow">
+                            <input
+                                type="text"
+                                value={newItemName}
+                                onChange={(e) => setNewItemName(e.target.value)}
+                                placeholder="New item name"
+                                className="border p-2 w-full mb-2"
+                            />
+                            <button onClick={handleSaveItem} className="bg-green-500 text-white p-2 rounded mr-2">Save</button>
+                            <button onClick={() => setIsAdding(false)} className="bg-gray-500 text-white p-2 rounded">Cancel</button>
+                        </div>
+                    )}
+                    {items.length > 0 ? (
+                        <ul className="space-y-2">
+                            {items.map(item => (
+                                <li key={item.id} className="flex justify-between items-center p-3 bg-gray-100 rounded shadow-sm">
+                                    <span
+                                        onClick={() => navigate(`/personal-notes/${subjectId}/${chapterId}/${item.id}`)}
+                                        className="cursor-pointer font-semibold flex-grow hover:text-blue-600"
+                                    >
+                                        {item.name}
+                                    </span>
+                                    {currentUser && (
+                                        <button onClick={() => handleDelete(item.id)} className="text-red-500 hover:text-red-700"><MdDelete size={20} /></button>
+                                    )}
+                                </li>
+                            ))}
+                        </ul>
+                    ) : (
+                        <p>No items found. Add a new one to get started.</p>
+                    )}
+                </div>
+            )}
+        </div>
+    );
+};
 
 export default PersonalNoteItems;
