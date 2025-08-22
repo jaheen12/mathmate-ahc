@@ -1,23 +1,42 @@
 // src/firebaseConfig.js
+
 import { initializeApp } from "firebase/app";
-import { getFirestore } from "firebase/firestore";
-import { getAuth } from "firebase/auth"; // Import getAuth here
+import { getAuth } from "firebase/auth";
+// Import the necessary Firestore functions
+import { getFirestore, enableIndexedDbPersistence } from "firebase/firestore";
 
 // Your web app's Firebase configuration
 const firebaseConfig = {
-  apiKey: "AIzaSyBafBv2UojhGRQjeiZoG4ES7O19jZ6OZvU",
-  authDomain: "mathmate-ahc-app.firebaseapp.com",
-  projectId: "mathmate-ahc-app",
-  storageBucket: "mathmate-ahc-app.firebasestorage.app",
-  messagingSenderId: "324907269101",
-  appId: "1:324907269101:web:5ec3feb735f86320ad05e4",
-  measurementId: "G-5B8XW73ZT4"
+  apiKey: import.meta.env.VITE_API_KEY,
+  authDomain: import.meta.env.VITE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_APP_ID
 };
 
-// Initialize Firebase App
+// Initialize Firebase
 const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
 
-// Initialize services ONCE and export them
-export const db = getFirestore(app);
-export const auth = getAuth(app);
+// --- THIS IS THE NEW PART ---
+// Enable offline persistence for Firestore
+enableIndexedDbPersistence(db)
+  .then(() => {
+    console.log("Firestore persistence enabled");
+  })
+  .catch((err) => {
+    if (err.code == 'failed-precondition') {
+      // Multiple tabs open, persistence can only be enabled
+      // in one tab at a time.
+      console.warn("Firestore persistence failed: Multiple tabs open.");
+    } else if (err.code == 'unimplemented') {
+      // The current browser does not support all of the
+      // features required to enable persistence
+      console.warn("Firestore persistence is not supported in this browser.");
+    }
+  });
+// ----------------------------
 
+export { auth, db };
