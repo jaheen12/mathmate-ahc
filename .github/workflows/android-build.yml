@@ -1,56 +1,62 @@
-name: Build Android APK
+name: Android Build
 
 on:
   push:
+    branches: [ "main" ]
+  pull_request:
     branches: [ "main" ]
 
 jobs:
   build:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout Repository
+      - name: Checkout repository
         uses: actions/checkout@v4
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: '20'
 
-      - name: Set up Java JDK
+      - name: Install dependencies
+        run: npm install
+
+      - name: Create .env file
+        run: |
+          echo "VITE_API_KEY=${{ secrets.VITE_API_KEY }}" >> .env
+          echo "VITE_AUTH_DOMAIN=${{ secrets.VITE_AUTH_DOMAIN }}" >> .env
+          echo "VITE_PROJECT_ID=${{ secrets.VITE_PROJECT_ID }}" >> .env
+          echo "VITE_STORAGE_BUCKET=${{ secrets.VITE_STORAGE_BUCKET }}" >> .env
+          echo "VITE_MESSAGING_SENDER_ID=${{ secrets.VITE_MESSAGING_SENDER_ID }}" >> .env
+          echo "VITE_APP_ID=${{ secrets.VITE_APP_ID }}" >> .env
+          # --- THIS IS THE NEW LINE YOU CORRECTLY IDENTIFIED ---
+          echo "TAILWIND_DISABLE_NATIVE_FS_WATCHER=${{ secrets.TAILWIND_DISABLE_NATIVE_FS_WATCHER }}" >> .env
+
+      - name: Build the web assets
+        run: npm run build
+
+      - name: Set up JDK
         uses: actions/setup-java@v4
         with:
           distribution: 'zulu'
           java-version: '17'
-      
-      - name: Install All Dependencies
-        run: npm install
 
-      - name: Build Web App
-        run: npm run build
+      - name: Install Capacitor CLI
+        run: npm install -g @capacitor/cli
 
-      - name: Initialize Capacitor
-        run: npx cap init "MathMate AHC" "com.jaheen12.mathmateahc" --web-dir "dist"
-
-      - name: Add Android Platform
-        run: npx cap add android
-      
-      # --- THIS IS THE NEW, CRITICAL STEP ---
-      - name: Add Required Android Permissions
-        run: |
-          sed -i '/<\/manifest>/i \    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />\n    <uses-permission android:name="android.permission.CAMERA" />' android/app/src/main/AndroidManifest.xml
-
-      - name: Sync Web Assets
+      - name: Sync web assets to native project
         run: npx cap sync android
-          
-      - name: Build Debug APK
-        run: |
-          cd android
-          chmod +x ./gradlew
-          ./gradlew assembleDebug
 
-      - name: Upload APK Artifact
+      - name: Make gradlew executable
+        run: chmod +x ./android/gradlew
+        working-directory: ./android
+
+      - name: Build Android App Bundle (AAB)
+        run: ./gradlew bundleRelease
+        working-directory: ./android
+
+      - name: Upload App Bundle
         uses: actions/upload-artifact@v4
         with:
-          name: app-debug-apk
-          path: android/app/build/outputs/apk/debug/app-debug.apk
+          name: app-release.aab
+          path: android/app/build/outputs/bundle/release/app-release.aab
