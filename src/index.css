@@ -2,3 +2,13 @@
 @tailwind components;
 @tailwind utilities;
 
+/*
+  This ensures that the root of your app takes up the full screen height
+  and removes any default browser margins or padding.
+*/
+html, body, #root {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  -webkit-tap-highlight-color: transparent; /* Removes the blue flash on tap on mobile */
+}
