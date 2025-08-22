@@ -1,157 +1,180 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import { ChevronRight, Plus, Pencil, Trash2, DownloadCloud, Loader, CheckCircle } from 'lucide-react';
-import { db } from '../firebaseConfig';
-import { collection, getDocs, doc, setDoc, deleteDoc } from 'firebase/firestore';
-import { useAuth } from '../AuthContext';
-import Swal from 'sweetalert2';
-import withReactContent from 'sweetalert2-react-content';
-import { downloadSubject, getDownloadStatus } from '../utils/downloadManager';
+import { Link, useNavigate } from 'react-router-dom';
+import { db } from '../firebaseConfig'; // Ensure this path is correct
+import { collection, getDocs, addDoc, deleteDoc, doc, updateDoc } from 'firebase/firestore';
+import { toast } from 'react-toastify';
+import { useAuth } from '../contexts/AuthContext';
+import { FaPlus } from "react-icons/fa";
+import { MdDelete, MdEdit } from "react-icons/md";
+import { IoArrowBack } from "react-icons/io5";
 
-const MySwal = withReactContent(Swal);
-const SUBJECTS_CACHE_KEY = 'mathmate-cache-note-subjects';
+const NoteSubjects = () => {
+  const [subjects, setSubjects] = useState([]);
+  const [newSubjectName, setNewSubjectName] = useState('');
+  const [isAdding, setIsAdding] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [isRenaming, setIsRenaming] = useState(false);
+  const [renamingSubjectId, setRenamingSubjectId] = useState(null);
+  const [renamingSubjectName, setRenamingSubjectName] = useState('');
 
-function NoteSubjects() {
-  const [subjects, setSubjects] = useState(() => JSON.parse(localStorage.getItem(SUBJECTS_CACHE_KEY)) || []);
-  const [isLoading, setIsLoading] = useState(subjects.length === 0);
+  const navigate = useNavigate();
   const { currentUser } = useAuth();
-  const [downloadStatus, setDownloadStatus] = useState(getDownloadStatus);
 
-  const fetchSubjects = async () => {
-    try {
-      const querySnapshot = await getDocs(collection(db, "official_notes"));
-      const freshSubs = querySnapshot.docs.map(doc => ({
-        id: doc.id,
-        name: doc.data().name
-      })).sort((a, b) => a.name.localeCompare(b.name));
-      
-      if (JSON.stringify(freshSubs) !== JSON.stringify(subjects)) {
-        setSubjects(freshSubs);
-        localStorage.setItem(SUBJECTS_CACHE_KEY, JSON.stringify(freshSubs));
-      }
-    } catch (error) {
-      console.error("Could not fetch fresh subjects (running in offline mode): ", error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
+  // Simplified useEffect to fetch data. Firestore's offline persistence handles caching.
   useEffect(() => {
-    setIsLoading(subjects.length === 0);
-    if (navigator.onLine) {
-      fetchSubjects();
-    } else {
-      setIsLoading(false);
-    }
-  }, []);
+    const fetchSubjects = async () => {
+      setLoading(true);
+      try {
+        const querySnapshot = await getDocs(collection(db, "official_notes"));
+        const subjectsData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        setSubjects(subjectsData);
+      } catch (error) {
+        console.error("Error fetching subjects: ", error);
+        toast.error("Failed to fetch subjects. Data may be unavailable offline.");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchSubjects();
+  }, []); // Empty dependency array ensures this runs only once on mount
 
   const handleAddSubject = () => {
-    MySwal.fire({
-      title: 'Add New Subject',
-      input: 'text',
-      inputPlaceholder: 'Enter subject name (e.g., Calculus-II)',
-      showCancelButton: true,
-      confirmButtonText: 'Create'
-    }).then(async (result) => {
-      if (result.isConfirmed && result.value) {
-        const subjectId = result.value.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
-        const subjectRef = doc(db, 'official_notes', subjectId);
-        await setDoc(subjectRef, { name: result.value });
-        fetchSubjects();
-        Swal.fire('Created!', 'The new subject has been added.', 'success');
+    setIsAdding(true);
+  };
+
+  const handleSaveSubject = async () => {
+    if (newSubjectName.trim() === '') {
+      toast.error('Subject name cannot be empty');
+      return;
+    }
+    try {
+      const docRef = await addDoc(collection(db, "official_notes"), {
+        name: newSubjectName,
+        createdAt: new Date()
+      });
+      setSubjects([...subjects, { id: docRef.id, name: newSubjectName }]);
+      setNewSubjectName('');
+      setIsAdding(false);
+      toast.success('Subject added successfully!');
+    } catch (error) {
+      console.error("Error adding subject: ", error);
+      toast.error('Failed to add subject.');
+    }
+  };
+
+  const handleDelete = async (subjectId) => {
+    if (window.confirm("Are you sure you want to delete this subject and all its notes?")) {
+      try {
+        await deleteDoc(doc(db, "official_notes", subjectId));
+        setSubjects(subjects.filter(subject => subject.id !== subjectId));
+        toast.success('Subject deleted successfully!');
+      } catch (error) {
+        console.error("Error deleting subject: ", error);
+        toast.error('Failed to delete subject.');
       }
-    });
+    }
   };
 
-  const handleRenameSubject = (sub) => {
-    MySwal.fire({
-      title: 'Rename Subject',
-      input: 'text',
-      inputValue: sub.name,
-      showCancelButton: true
-    }).then(async (result) => {
-        if(result.isConfirmed && result.value) {
-            const subjectRef = doc(db, 'official_notes', sub.id);
-            await setDoc(subjectRef, { name: result.value });
-            fetchSubjects();
-            Swal.fire('Renamed!', 'The category name has been updated.', 'success');
-        }
-    });
+  const handleRename = (subject) => {
+    setIsRenaming(true);
+    setRenamingSubjectId(subject.id);
+    setRenamingSubjectName(subject.name);
+  };
+  
+  const handleSaveRename = async () => {
+    if (renamingSubjectName.trim() === '') {
+      toast.error('Subject name cannot be empty');
+      return;
+    }
+    try {
+      const subjectDoc = doc(db, "official_notes", renamingSubjectId);
+      await updateDoc(subjectDoc, {
+        name: renamingSubjectName
+      });
+      setSubjects(subjects.map(s => s.id === renamingSubjectId ? { ...s, name: renamingSubjectName } : s));
+      setIsRenaming(false);
+      setRenamingSubjectId(null);
+      toast.success('Subject renamed successfully!');
+    } catch (error) {
+      console.error("Error renaming subject: ", error);
+      toast.error('Failed to rename subject.');
+    }
   };
 
-  const handleDeleteSubject = (sub) => {
-    MySwal.fire({
-      title: 'Are you sure?',
-      text: `This will delete the subject "${sub.name}" and ALL its chapters and notes. This cannot be undone.`,
-      icon: 'warning',
-      showCancelButton: true,
-      confirmButtonColor: '#d33',
-      confirmButtonText: 'Yes, delete it!'
-    }).then(async (result) => {
-      if (result.isConfirmed) {
-        const subjectRef = doc(db, 'official_notes', sub.id);
-        await deleteDoc(subjectRef);
-        fetchSubjects();
-        Swal.fire('Deleted!', 'The subject has been deleted.', 'success');
-      }
-    });
-  };
-
-  const handleDownload = (e, subjectId) => {
-    e.preventDefault();
-    e.stopPropagation();
-    downloadSubject(subjectId, (newStatus) => {
-      setDownloadStatus({ ...newStatus });
-    });
+  const handleSubjectClick = (subjectId) => {
+    navigate(`/notes/${subjectId}`);
   };
 
   return (
-    <div className="page-container">
-      <div className="page-header-row">
-        <h1 className="page-title">Subjects</h1>
+    <div className="container mx-auto p-4">
+      <div className="flex justify-between items-center mb-4">
+        <Link to="/profile" className="text-blue-500 hover:underline"><IoArrowBack size={24} /></Link>
+        <h1 className="text-2xl font-bold">Official Note Subjects</h1>
         {currentUser && (
-          <button className="page-action-button" onClick={handleAddSubject}>
-            <Plus size={24} />
+          <button onClick={handleAddSubject} className="bg-blue-500 text-white p-2 rounded-full hover:bg-blue-600">
+            <FaPlus />
           </button>
         )}
       </div>
 
-      {isLoading ? <p>Loading subjects...</p> : (
-        <div className="list-container">
-          {subjects.map(subject => {
-            const status = downloadStatus[subject.id];
-            return (
-              <div key={subject.id} className="list-item-wrapper">
-                <Link to={`/notes/${subject.id}`} className="list-item">
-                  <span>{subject.name}</span>
-                  <div className="list-item-right-content">
-                    {status === 'downloading' && <Loader className="status-icon spinning" size={20} />}
-                    {status === 'downloaded' && <CheckCircle className="status-icon downloaded" size={20} />}
-                    {!status && navigator.onLine && (
-                      <button className="download-button" onClick={(e) => handleDownload(e, subject.id)}>
-                        <DownloadCloud size={20} />
-                      </button>
-                    )}
-                    <ChevronRight />
-                  </div>
-                </Link>
-                {currentUser && (
-                  <div className="list-item-actions">
-                    <button className="action-button edit-button" onClick={() => handleRenameSubject(subject)}>
-                      <Pencil size={18} />
-                    </button>
-                    <button className="action-button delete-button" onClick={() => handleDeleteSubject(subject)}>
-                      <Trash2 size={18} />
-                    </button>
-                  </div>
-                )}
-              </div>
-            );
-          })}
+      {loading ? (
+        <p>Loading subjects...</p>
+      ) : (
+        <div>
+          {isAdding && (
+            <div className="mb-4 p-4 border rounded shadow">
+              <input
+                type="text"
+                value={newSubjectName}
+                onChange={(e) => setNewSubjectName(e.target.value)}
+                className="border p-2 w-full mb-2"
+                placeholder="New subject name"
+              />
+              <button onClick={handleSaveSubject} className="bg-green-500 text-white p-2 rounded mr-2">Save</button>
+              <button onClick={() => setIsAdding(false)} className="bg-gray-500 text-white p-2 rounded">Cancel</button>
+            </div>
+          )}
+
+          {isRenaming && (
+            <div className="mb-4 p-4 border rounded shadow">
+              <input
+                type="text"
+                value={renamingSubjectName}
+                onChange={(e) => setRenamingSubjectName(e.target.value)}
+                className="border p-2 w-full mb-2"
+              />
+              <button onClick={handleSaveRename} className="bg-green-500 text-white p-2 rounded mr-2">Save</button>
+              <button onClick={() => setIsRenaming(false)} className="bg-gray-500 text-white p-2 rounded">Cancel</button>
+            </div>
+          )}
+          
+          {subjects.length > 0 ? (
+            <ul className="space-y-2">
+              {subjects.map(subject => (
+                <li key={subject.id} className="flex justify-between items-center p-3 bg-gray-100 rounded shadow-sm">
+                  <span
+                    onClick={() => handleSubjectClick(subject.id)}
+                    className="cursor-pointer font-semibold flex-grow hover:text-blue-600"
+                  >
+                    {subject.name}
+                  </span>
+                  {currentUser && (
+                    <div className="flex items-center">
+                      <button onClick={() => handleRename(subject)} className="text-blue-500 hover:text-blue-700 mr-2"><MdEdit size={20} /></button>
+                      <button onClick={() => handleDelete(subject.id)} className="text-red-500 hover:text-red-700"><MdDelete size={20} /></button>
+                    </div>
+                  )}
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p>No subjects found. Add a new one to get started!</p>
+          )}
         </div>
       )}
     </div>
   );
-}
+};
 
 export default NoteSubjects;
