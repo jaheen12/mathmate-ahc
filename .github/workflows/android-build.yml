@@ -22,15 +22,22 @@ jobs:
         run: npm install
 
       - name: Create .env file
+        env: # Define environment variables for this step
+          VITE_API_KEY: ${{ secrets.VITE_API_KEY }}
+          VITE_AUTH_DOMAIN: ${{ secrets.VITE_AUTH_DOMAIN }}
+          VITE_PROJECT_ID: ${{ secrets.VITE_PROJECT_ID }}
+          VITE_STORAGE_BUCKET: ${{ secrets.VITE_STORAGE_BUCKET }}
+          VITE_MESSAGING_SENDER_ID: ${{ secrets.VITE_MESSAGING_SENDER_ID }}
+          VITE_APP_ID: ${{ secrets.VITE_APP_ID }}
+          TAILWIND_DISABLE_NATIVE_FS_WATCHER: ${{ secrets.TAILWIND_DISABLE_NATIVE_FS_WATCHER }}
         run: |
-          echo "VITE_API_KEY=${{ secrets.VITE_API_KEY }}" >> .env
-          echo "VITE_AUTH_DOMAIN=${{ secrets.VITE_AUTH_DOMAIN }}" >> .env
-          echo "VITE_PROJECT_ID=${{ secrets.VITE_PROJECT_ID }}" >> .env
-          echo "VITE_STORAGE_BUCKET=${{ secrets.VITE_STORAGE_BUCKET }}" >> .env
-          echo "VITE_MESSAGING_SENDER_ID=${{ secrets.VITE_MESSAGING_SENDER_ID }}" >> .env
-          echo "VITE_APP_ID=${{ secrets.VITE_APP_ID }}" >> .env
-          # --- THIS IS THE NEW LINE YOU CORRECTLY IDENTIFIED ---
-          echo "TAILWIND_DISABLE_NATIVE_FS_WATCHER=${{ secrets.TAILWIND_DISABLE_NATIVE_FS_WATCHER }}" >> .env
+          echo "VITE_API_KEY=$VITE_API_KEY" >> .env
+          echo "VITE_AUTH_DOMAIN=$VITE_AUTH_DOMAIN" >> .env
+          echo "VITE_PROJECT_ID=$VITE_PROJECT_ID" >> .env
+          echo "VITE_STORAGE_BUCKET=$VITE_STORAGE_BUCKET" >> .env
+          echo "VITE_MESSAGING_SENDER_ID=$VITE_MESSAGING_SENDER_ID" >> .env
+          echo "VITE_APP_ID=$VITE_APP_ID" >> .env
+          echo "TAILWIND_DISABLE_NATIVE_FS_WATCHER=$TAILWIND_DISABLE_NATIVE_FS_WATCHER" >> .env
 
       - name: Build the web assets
         run: npm run build
@@ -44,11 +51,15 @@ jobs:
       - name: Install Capacitor CLI
         run: npm install -g @capacitor/cli
 
+      # --- THIS IS THE NEW, CRITICAL FIX ---
+      - name: Add Android platform
+        run: npx cap add android
+
       - name: Sync web assets to native project
         run: npx cap sync android
 
       - name: Make gradlew executable
-        run: chmod +x ./android/gradlew
+        run: chmod +x ./gradlew
         working-directory: ./android
 
       - name: Build Android App Bundle (AAB)
