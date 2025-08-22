@@ -2,12 +2,52 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Edit } from 'lucide-react';
 import { db } from '../firebaseConfig';
-import { doc, getDoc, updateDoc, serverTimestamp, addDoc, collection } from 'firebase/firestore'; // Import necessary functions
+import { doc, getDoc, updateDoc, serverTimestamp, collection, addDoc } from 'firebase/firestore';
 import { useAuth } from '../AuthContext';
 import Swal from 'sweetalert2';
 import withReactContent from 'sweetalert2-react-content';
+import 'katex/dist/katex.min.css';
+import { BlockMath } from 'react-katex';
 
 const MySwal = withReactContent(Swal);
+
+// --- NEW: A component to safely render mixed HTML and KaTeX content ---
+const HtmlMathRenderer = ({ content }) => {
+  if (!content) return null;
+
+  // Split the content by the KaTeX block delimiters $$...$$
+  // Using a regex to capture single backslashes correctly
+  const parts = content.split(/\$\$(.*?)\$\$/gs);
+
+  return (
+    <div>
+      {parts.map((part, index) => {
+        if (index % 2 === 1) {
+          // This is a math part (inside $$...$$)
+          return <BlockMath key={index} math={part.replace(/\\/g, '\\\\')} />;
+        } else {
+          // This is a regular HTML/text part. It might contain inline math.
+          // Let's also handle inline math like \(...\)
+          const inlineParts = part.split(/\\\\\((.*?)\\\\\)/gs);
+          return (
+            <div key={index} style={{display: "inline"}}>
+              {inlineParts.map((inlinePart, inlineIndex) => {
+                 if (inlineIndex % 2 === 1) {
+                    // This is inline math
+                    return <InlineMath key={inlineIndex} math={inlinePart.replace(/\\/g, '\\\\')} />;
+                 } else {
+                    // This is regular HTML. Be careful with this.
+                    return <div key={inlineIndex} dangerouslySetInnerHTML={{ __html: inlinePart }} />;
+                 }
+              })}
+            </div>
+          )
+        }
+      })}
+    </div>
+  );
+};
+
 
 function NoteViewer() {
     const { subjectId, chapterId, noteId } = useParams();
@@ -45,7 +85,6 @@ function NoteViewer() {
         }
     }, [subjectId, chapterId, noteId]);
 
-    // This is the same edit form logic from NoteItems.jsx
     const handleEditNote = () => {
         MySwal.fire({
           title: 'Edit Note',
@@ -73,6 +112,7 @@ function NoteViewer() {
               const noteRef = doc(db, `official_notes/${subjectId}/chapters/${chapterId}/notes`, note.id);
               await updateDoc(noteRef, result.value);
               Swal.fire('Saved!', 'The note has been updated.', 'success');
+              
               // Re-fetch the note to show updated content
               const updatedNoteSnap = await getDoc(noteRef);
               if(updatedNoteSnap.exists()){
@@ -111,13 +151,12 @@ function NoteViewer() {
                 {currentUser ? (
                     <button onClick={handleEditNote} className="edit-button-viewer"><Edit /></button>
                 ) : (
-                    <div style={{width: '40px'}}></div> // Placeholder for alignment
+                    <div style={{width: '40px'}}></div>
                 )}
             </header>
-            <div
-                className="viewer-content"
-                dangerouslySetInnerHTML={{ __html: note.content }}
-            />
+            <div className="viewer-content">
+                <HtmlMathRenderer content={note.content} />
+            </div>
         </div>
     );
 }
