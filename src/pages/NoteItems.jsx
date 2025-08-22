@@ -1,77 +1,38 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { db } from '../firebaseConfig';
-import { collection, getDocs, addDoc, deleteDoc, doc } from 'firebase/firestore';
-import { toast } from 'react-toastify';
 import { useAuth } from '../contexts/AuthContext';
+import { useFirestoreCollection } from '../hooks/useFirestoreCollection'; // Import our hook
 import { FaPlus } from "react-icons/fa";
 import { MdDelete } from "react-icons/md";
 import { IoArrowBack } from "react-icons/io5";
-import Skeleton from 'react-loading-skeleton'; // Import the skeleton component
+import Skeleton from 'react-loading-skeleton';
 
 const NoteItems = () => {
     const { subjectId, chapterId } = useParams();
-    const [items, setItems] = useState([]);
+    const navigate = useNavigate();
+
+    // --- Use the hook with a nested dynamic path ---
+    const { data: items, loading, addItem, deleteItem } = useFirestoreCollection(['official_notes', subjectId, 'chapters', chapterId, 'items']);
+    
+    // --- UI-specific state ---
     const [newItemName, setNewItemName] = useState('');
     const [isAdding, setIsAdding] = useState(false);
-    const [loading, setLoading] = useState(true);
-    const navigate = useNavigate();
+    
     const { currentUser } = useAuth();
 
-    useEffect(() => {
-        const fetchItems = async () => {
-            setLoading(true);
-            try {
-                const itemsCollection = collection(db, "official_notes", subjectId, "chapters", chapterId, "items");
-                const querySnapshot = await getDocs(itemsCollection);
-                const itemsData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                setItems(itemsData);
-            } catch (error) {
-                console.error("Error fetching items: ", error);
-                toast.error("Failed to fetch note items.");
-            } finally {
-                setLoading(false);
-            }
-        };
-
-        fetchItems();
-    }, [subjectId, chapterId]);
-
+    // --- Simple handlers that call the hook's functions ---
     const handleSaveItem = async () => {
-        if (newItemName.trim() === '') {
-            toast.error('Item name cannot be empty');
-            return;
-        }
-        try {
-            const itemsCollection = collection(db, "official_notes", subjectId, "chapters", chapterId, "items");
-            const docRef = await addDoc(itemsCollection, {
-                name: newItemName,
-                createdAt: new Date()
-            });
-            setItems([...items, { id: docRef.id, name: newItemName }]);
-            setNewItemName('');
-            setIsAdding(false);
-            toast.success('Item added successfully!');
-        } catch (error) {
-            console.error("Error adding item: ", error);
-            toast.error('Failed to add item.');
-        }
+        if (newItemName.trim() === '') return;
+        await addItem({ name: newItemName });
+        setNewItemName('');
+        setIsAdding(false);
     };
 
     const handleDelete = async (itemId) => {
-        if (window.confirm("Are you sure you want to delete this item?")) {
-            try {
-                await deleteDoc(doc(db, "official_notes", subjectId, "chapters", chapterId, "items", itemId));
-                setItems(items.filter(item => item.id !== itemId));
-                toast.success('Item deleted successfully!');
-            } catch (error) {
-                console.error("Error deleting item: ", error);
-                toast.error('Failed to delete item.');
-            }
-        }
+        await deleteItem(itemId);
     };
 
-    // --- Loading Skeleton component for Items ---
+    // --- Skeleton Component ---
     const ItemsSkeleton = () => (
         <div className="space-y-2">
             {Array(5).fill().map((_, index) => (
@@ -97,13 +58,7 @@ const NoteItems = () => {
 
             {isAdding && (
                 <div className="mb-4 p-4 border rounded shadow">
-                    <input
-                        type="text"
-                        value={newItemName}
-                        onChange={(e) => setNewItemName(e.target.value)}
-                        placeholder="New item name"
-                        className="border p-2 w-full mb-2"
-                    />
+                    <input type="text" value={newItemName} onChange={(e) => setNewItemName(e.target.value)} placeholder="New item name" className="border p-2 w-full mb-2"/>
                     <button onClick={handleSaveItem} className="bg-green-500 text-white p-2 rounded mr-2">Save</button>
                     <button onClick={() => setIsAdding(false)} className="bg-gray-500 text-white p-2 rounded">Cancel</button>
                 </div>
@@ -115,10 +70,7 @@ const NoteItems = () => {
                         <ul className="space-y-2">
                             {items.map(item => (
                                 <li key={item.id} className="flex justify-between items-center p-3 bg-gray-100 rounded shadow-sm">
-                                    <span
-                                        onClick={() => navigate(`/notes/${subjectId}/${chapterId}/${item.id}`)}
-                                        className="cursor-pointer font-semibold flex-grow hover:text-blue-600"
-                                    >
+                                    <span onClick={() => navigate(`/notes/${subjectId}/${chapterId}/${item.id}`)} className="cursor-pointer font-semibold flex-grow hover:text-blue-600">
                                         {item.name}
                                     </span>
                                     {currentUser && (

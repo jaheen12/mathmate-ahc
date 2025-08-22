@@ -1,109 +1,55 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { db } from '../firebaseConfig';
-import { collection, getDocs, addDoc, deleteDoc, doc, updateDoc } from 'firebase/firestore';
-import { toast } from 'react-toastify';
 import { useAuth } from '../contexts/AuthContext';
+import { useFirestoreCollection } from '../hooks/useFirestoreCollection'; // Import our hook
 import { FaPlus } from "react-icons/fa";
 import { MdDelete, MdEdit } from "react-icons/md";
 import { IoArrowBack } from "react-icons/io5";
-import Skeleton from 'react-loading-skeleton'; // Import the skeleton component
+import Skeleton from 'react-loading-skeleton';
 
 const PersonalChapters = () => {
     const { subjectId } = useParams();
-    const [chapters, setChapters] = useState([]);
+    const navigate = useNavigate();
+
+    // --- Use the hook with a dynamic path ---
+    const { data: chapters, loading, addItem, deleteItem, updateItem } = useFirestoreCollection(['personal_notes', subjectId, 'chapters']);
+    
+    // --- UI-specific state ---
     const [newChapterName, setNewChapterName] = useState('');
     const [isAdding, setIsAdding] = useState(false);
-    const [loading, setLoading] = useState(true);
     const [isRenaming, setIsRenaming] = useState(false);
     const [renamingChapterId, setRenamingChapterId] = useState(null);
     const [renamingChapterName, setRenamingChapterName] = useState('');
-    const navigate = useNavigate();
+    
     const { currentUser } = useAuth();
 
-    useEffect(() => {
-        const fetchChapters = async () => {
-            if (!currentUser) {
-                setLoading(false);
-                return;
-            }
-
-            setLoading(true);
-            try {
-                const chaptersCollection = collection(db, "personal_notes", subjectId, "chapters");
-                const querySnapshot = await getDocs(chaptersCollection);
-                const chaptersData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                setChapters(chaptersData);
-            } catch (error) {
-                console.error("Error fetching chapters: ", error);
-                toast.error("Failed to fetch chapters.");
-            } finally {
-                setLoading(false);
-            }
-        };
-
-        fetchChapters();
-    }, [subjectId, currentUser]);
-
+    // --- Simple handlers that call the hook's functions ---
     const handleSaveChapter = async () => {
-        if (newChapterName.trim() === '') {
-            toast.error('Chapter name cannot be empty');
-            return;
-        }
-        try {
-            const chaptersCollection = collection(db, "personal_notes", subjectId, "chapters");
-            const docRef = await addDoc(chaptersCollection, {
-                name: newChapterName,
-                createdAt: new Date()
-            });
-            setChapters([...chapters, { id: docRef.id, name: newChapterName }]);
-            setNewChapterName('');
-            setIsAdding(false);
-            toast.success('Chapter added successfully!');
-        } catch (error) {
-            console.error("Error adding chapter: ", error);
-            toast.error('Failed to add chapter.');
-        }
+        if (newChapterName.trim() === '') return;
+        await addItem({ name: newChapterName });
+        setNewChapterName('');
+        setIsAdding(false);
     };
 
     const handleDelete = async (chapterId) => {
-        if (window.confirm("Are you sure you want to delete this chapter?")) {
-            try {
-                await deleteDoc(doc(db, "personal_notes", subjectId, "chapters", chapterId));
-                setChapters(chapters.filter(chapter => chapter.id !== chapterId));
-                toast.success('Chapter deleted successfully!');
-            } catch (error) {
-                console.error("Error deleting chapter: ", error);
-                toast.error('Failed to delete chapter.');
-            }
-        }
+        await deleteItem(chapterId);
     };
-    
-    const handleRename = (chapter) => {
+
+    const handleSaveRename = async () => {
+        if (renamingChapterName.trim() === '') return;
+        await updateItem(renamingChapterId, { name: renamingChapterName });
+        setIsRenaming(false);
+        setRenamingChapterId(null);
+    };
+
+    // --- UI action helpers ---
+    const handleRenameClick = (chapter) => {
         setIsRenaming(true);
         setRenamingChapterId(chapter.id);
         setRenamingChapterName(chapter.name);
     };
 
-    const handleSaveRename = async () => {
-        if (renamingChapterName.trim() === '') {
-            toast.error('Chapter name cannot be empty');
-            return;
-        }
-        try {
-            const chapterDoc = doc(db, "personal_notes", subjectId, "chapters", renamingChapterId);
-            await updateDoc(chapterDoc, { name: renamingChapterName });
-            setChapters(chapters.map(c => c.id === renamingChapterId ? { ...c, name: renamingChapterName } : c));
-            setIsRenaming(false);
-            setRenamingChapterId(null);
-            toast.success('Chapter renamed successfully!');
-        } catch (error) {
-            console.error("Error renaming chapter: ", error);
-            toast.error('Failed to rename chapter.');
-        }
-    };
-
-    // --- Loading Skeleton component for Chapters ---
+    // --- Skeleton Component ---
     const ChaptersSkeleton = () => (
         <div className="space-y-2">
             {Array(5).fill().map((_, index) => (
@@ -132,13 +78,7 @@ const PersonalChapters = () => {
 
             {isAdding && (
                 <div className="mb-4 p-4 border rounded shadow">
-                    <input
-                        type="text"
-                        value={newChapterName}
-                        onChange={(e) => setNewChapterName(e.target.value)}
-                        placeholder="New chapter name"
-                        className="border p-2 w-full mb-2"
-                    />
+                    <input type="text" value={newChapterName} onChange={(e) => setNewChapterName(e.target.value)} placeholder="New chapter name" className="border p-2 w-full mb-2" />
                     <button onClick={handleSaveChapter} className="bg-green-500 text-white p-2 rounded mr-2">Save</button>
                     <button onClick={() => setIsAdding(false)} className="bg-gray-500 text-white p-2 rounded">Cancel</button>
                 </div>
@@ -157,15 +97,12 @@ const PersonalChapters = () => {
                         <ul className="space-y-2">
                             {chapters.map(chapter => (
                                 <li key={chapter.id} className="flex justify-between items-center p-3 bg-gray-100 rounded shadow-sm">
-                                    <span 
-                                        onClick={() => navigate(`/personal-notes/${subjectId}/${chapter.id}`)} 
-                                        className="cursor-pointer font-semibold flex-grow hover:text-blue-600"
-                                    >
+                                    <span onClick={() => navigate(`/personal-notes/${subjectId}/${chapter.id}`)} className="cursor-pointer font-semibold flex-grow hover:text-blue-600">
                                         {chapter.name}
                                     </span>
                                     {currentUser && (
                                         <div className="flex items-center">
-                                            <button onClick={() => handleRename(chapter)} className="text-blue-500 hover:text-blue-700 mr-2"><MdEdit size={20} /></button>
+                                            <button onClick={() => handleRenameClick(chapter)} className="text-blue-500 hover:text-blue-700 mr-2"><MdEdit size={20} /></button>
                                             <button onClick={() => handleDelete(chapter.id)} className="text-red-500 hover:text-red-700"><MdDelete size={20} /></button>
                                         </div>
                                     )}
