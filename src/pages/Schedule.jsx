@@ -6,6 +6,7 @@ import { toast } from 'react-toastify';
 import { useAuth } from '../contexts/AuthContext';
 import ScheduleView from '../components/ScheduleView';
 import { IoArrowBack } from "react-icons/io5";
+import Skeleton from 'react-loading-skeleton'; // Import the skeleton component
 
 const Schedule = () => {
     const [scheduleData, setScheduleData] = useState(null);
@@ -16,14 +17,12 @@ const Schedule = () => {
         const fetchSchedule = async () => {
             setLoading(true);
             try {
-                // The schedule is stored in a single document for simplicity
                 const scheduleDocRef = doc(db, "schedules", "first_year");
                 const docSnap = await getDoc(scheduleDocRef);
 
                 if (docSnap.exists()) {
                     setScheduleData(docSnap.data());
                 } else {
-                    // If no schedule is found, initialize with an empty structure
                     setScheduleData({ days: {} }); 
                     toast.info("No schedule has been set up yet.");
                 }
@@ -37,6 +36,27 @@ const Schedule = () => {
 
         fetchSchedule();
     }, []);
+
+    // --- Loading Skeleton for the Schedule View ---
+    const ScheduleSkeleton = () => (
+        <div className="space-y-4">
+            {Array(3).fill().map((_, dayIndex) => (
+                <div key={dayIndex} className="p-4 border rounded shadow-sm">
+                    <Skeleton height={28} width="40%" style={{ marginBottom: '12px' }} />
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                        <Skeleton height={20} />
+                        <Skeleton height={20} />
+                        <Skeleton height={20} />
+                    </div>
+                     <div className="grid grid-cols-1 md:grid-cols-3 gap-2 mt-2">
+                        <Skeleton height={20} />
+                        <Skeleton height={20} />
+                        <Skeleton height={20} />
+                    </div>
+                </div>
+            ))}
+        </div>
+    );
 
     return (
         <div className="container mx-auto p-4">
@@ -53,7 +73,7 @@ const Schedule = () => {
             </div>
 
             {loading ? (
-                <p>Loading schedule...</p>
+                <ScheduleSkeleton />
             ) : (
                 scheduleData && <ScheduleView scheduleData={scheduleData} />
             )}

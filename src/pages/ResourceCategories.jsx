@@ -7,6 +7,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { FaPlus } from "react-icons/fa";
 import { MdDelete, MdEdit } from "react-icons/md";
 import { IoArrowBack } from "react-icons/io5";
+import Skeleton from 'react-loading-skeleton'; // Import the skeleton component
 
 const ResourceCategories = () => {
     const [categories, setCategories] = useState([]);
@@ -94,6 +95,21 @@ const ResourceCategories = () => {
         }
     };
 
+    // --- Loading Skeleton component for Categories ---
+    const CategoriesSkeleton = () => (
+        <div className="space-y-2">
+            {Array(5).fill().map((_, index) => (
+                <div key={index} className="flex justify-between items-center p-3 bg-gray-100 rounded shadow-sm">
+                    <Skeleton width={'60%'} height={24} />
+                    <div className="flex items-center">
+                        <Skeleton circle={true} height={32} width={32} style={{ marginRight: '10px' }} />
+                        <Skeleton circle={true} height={32} width={32} />
+                    </div>
+                </div>
+            ))}
+        </div>
+    );
+
     return (
         <div className="container mx-auto p-4">
             <div className="flex justify-between items-center mb-4">
@@ -106,28 +122,29 @@ const ResourceCategories = () => {
                 )}
             </div>
 
-            {loading ? <p>Loading categories...</p> : (
+            {isAdding && (
+                <div className="mb-4 p-4 border rounded shadow">
+                    <input
+                        type="text"
+                        value={newCategoryName}
+                        onChange={(e) => setNewCategoryName(e.target.value)}
+                        placeholder="New category name"
+                        className="border p-2 w-full mb-2"
+                    />
+                    <button onClick={handleSaveCategory} className="bg-green-500 text-white p-2 rounded mr-2">Save</button>
+                    <button onClick={() => setIsAdding(false)} className="bg-gray-500 text-white p-2 rounded">Cancel</button>
+                </div>
+            )}
+            {isRenaming && (
+                 <div className="mb-4 p-4 border rounded shadow">
+                    <input type="text" value={renamingCategoryName} onChange={(e) => setRenamingCategoryName(e.target.value)} className="border p-2 w-full mb-2" />
+                    <button onClick={handleSaveRename} className="bg-green-500 text-white p-2 rounded mr-2">Save Rename</button>
+                    <button onClick={() => setIsRenaming(false)} className="bg-gray-500 text-white p-2 rounded">Cancel</button>
+                </div>
+            )}
+            
+            {loading ? <CategoriesSkeleton /> : (
                 <div>
-                    {isAdding && (
-                        <div className="mb-4 p-4 border rounded shadow">
-                            <input
-                                type="text"
-                                value={newCategoryName}
-                                onChange={(e) => setNewCategoryName(e.target.value)}
-                                placeholder="New category name"
-                                className="border p-2 w-full mb-2"
-                            />
-                            <button onClick={handleSaveCategory} className="bg-green-500 text-white p-2 rounded mr-2">Save</button>
-                            <button onClick={() => setIsAdding(false)} className="bg-gray-500 text-white p-2 rounded">Cancel</button>
-                        </div>
-                    )}
-                    {isRenaming && (
-                         <div className="mb-4 p-4 border rounded shadow">
-                            <input type="text" value={renamingCategoryName} onChange={(e) => setRenamingCategoryName(e.target.value)} className="border p-2 w-full mb-2" />
-                            <button onClick={handleSaveRename} className="bg-green-500 text-white p-2 rounded mr-2">Save Rename</button>
-                            <button onClick={() => setIsRenaming(false)} className="bg-gray-500 text-white p-2 rounded">Cancel</button>
-                        </div>
-                    )}
                     {categories.length > 0 ? (
                         <ul className="space-y-2">
                             {categories.map(category => (

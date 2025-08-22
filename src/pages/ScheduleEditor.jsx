@@ -4,6 +4,7 @@ import { db } from '../firebaseConfig';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { toast } from 'react-toastify';
 import { IoArrowBack } from "react-icons/io5";
+import Skeleton from 'react-loading-skeleton'; // Import the skeleton component
 
 const ScheduleEditor = () => {
     const [scheduleData, setScheduleData] = useState({ days: {} });
@@ -20,7 +21,6 @@ const ScheduleEditor = () => {
                 if (docSnap.exists()) {
                     setScheduleData(docSnap.data());
                 } else {
-                    // Initialize a default structure if no document exists
                     const initialData = { days: {} };
                     daysOfWeek.forEach(day => {
                         initialData.days[day] = [];
@@ -71,6 +71,24 @@ const ScheduleEditor = () => {
         }
     };
 
+    // --- Loading Skeleton for the Schedule Editor ---
+    const EditorSkeleton = () => (
+        <div className="space-y-4">
+            {Array(3).fill().map((_, dayIndex) => (
+                <div key={dayIndex} className="p-4 border rounded shadow-sm">
+                    <Skeleton height={28} width="40%" style={{ marginBottom: '12px' }} />
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-2 mb-2 items-center">
+                        <Skeleton height={38} />
+                        <Skeleton height={38} />
+                        <Skeleton height={38} />
+                        <Skeleton height={38} />
+                    </div>
+                     <Skeleton height={30} width={100} className="mt-2" />
+                </div>
+            ))}
+        </div>
+    );
+
     return (
         <div className="container mx-auto p-4">
             <div className="flex justify-between items-center mb-4">
@@ -81,7 +99,7 @@ const ScheduleEditor = () => {
                 </button>
             </div>
             
-            {loading ? <p>Loading editor...</p> : (
+            {loading ? <EditorSkeleton /> : (
                 <div className="space-y-4">
                     {daysOfWeek.map(day => (
                         <div key={day} className="p-4 border rounded shadow-sm">

@@ -6,6 +6,7 @@ import { toast } from 'react-toastify';
 import NoteEditor from '../components/NoteEditor';
 import { useAuth } from '../contexts/AuthContext';
 import { IoArrowBack } from "react-icons/io5";
+import Skeleton from 'react-loading-skeleton'; // Import the skeleton component
 
 const NoteViewer = () => {
     const { subjectId, chapterId, itemId } = useParams();
@@ -13,7 +14,6 @@ const NoteViewer = () => {
     const [loading, setLoading] = useState(true);
     const { currentUser } = useAuth();
     
-    // This determines which collection to use based on the URL
     const isPersonal = window.location.pathname.includes('personal-notes');
     const collectionPrefix = isPersonal ? 'personal_notes' : 'official_notes';
 
@@ -25,7 +25,6 @@ const NoteViewer = () => {
                 const docSnap = await getDoc(noteDocRef);
 
                 if (docSnap.exists()) {
-                    // Use the content field, or default to an empty string if it doesn't exist
                     setNoteContent(docSnap.data().content || '');
                 } else {
                     toast.error("Note not found.");
@@ -58,6 +57,16 @@ const NoteViewer = () => {
         ? `/personal-notes/${subjectId}/${chapterId}` 
         : `/notes/${subjectId}/${chapterId}`;
 
+    // --- Loading Skeleton for the Note Editor ---
+    const EditorSkeleton = () => (
+        <div>
+            {/* Skeleton for the editor toolbar */}
+            <Skeleton height={40} style={{ marginBottom: '8px' }} /> 
+            {/* Skeleton for the text area */}
+            <Skeleton height={300} /> 
+        </div>
+    );
+
     return (
         <div className="container mx-auto p-4">
             <div className="flex justify-between items-center mb-4">
@@ -68,7 +77,7 @@ const NoteViewer = () => {
             </div>
             
             {loading ? (
-                <p>Loading note...</p>
+                <EditorSkeleton />
             ) : (
                 <NoteEditor 
                     initialContent={noteContent} 

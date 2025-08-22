@@ -7,6 +7,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { FaPlus } from "react-icons/fa";
 import { MdDelete, MdEdit } from "react-icons/md";
 import { IoArrowBack } from "react-icons/io5";
+import Skeleton from 'react-loading-skeleton'; // Import the skeleton component
 
 const ResourceChapters = () => {
     const { categoryId } = useParams();
@@ -28,7 +29,7 @@ const ResourceChapters = () => {
                 const querySnapshot = await getDocs(chaptersCollection);
                 const chaptersData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
                 setChapters(chaptersData);
-            } catch (error)
+            } catch (error) {
                 console.error("Error fetching chapters: ", error);
                 toast.error("Failed to fetch chapters.");
             } finally {
@@ -97,6 +98,21 @@ const ResourceChapters = () => {
         }
     };
 
+    // --- Loading Skeleton component for Chapters ---
+    const ChaptersSkeleton = () => (
+        <div className="space-y-2">
+            {Array(5).fill().map((_, index) => (
+                <div key={index} className="flex justify-between items-center p-3 bg-gray-100 rounded shadow-sm">
+                    <Skeleton width={'60%'} height={24} />
+                    <div className="flex items-center">
+                        <Skeleton circle={true} height={32} width={32} style={{ marginRight: '10px' }} />
+                        <Skeleton circle={true} height={32} width={32} />
+                    </div>
+                </div>
+            ))}
+        </div>
+    );
+
     return (
         <div className="container mx-auto p-4">
             <div className="flex justify-between items-center mb-4">
@@ -109,28 +125,29 @@ const ResourceChapters = () => {
                 )}
             </div>
 
-            {loading ? <p>Loading chapters...</p> : (
+            {isAdding && (
+                <div className="mb-4 p-4 border rounded shadow">
+                    <input
+                        type="text"
+                        value={newChapterName}
+                        onChange={(e) => setNewChapterName(e.target.value)}
+                        placeholder="New chapter name"
+                        className="border p-2 w-full mb-2"
+                    />
+                    <button onClick={handleSaveChapter} className="bg-green-500 text-white p-2 rounded mr-2">Save</button>
+                    <button onClick={() => setIsAdding(false)} className="bg-gray-500 text-white p-2 rounded">Cancel</button>
+                </div>
+            )}
+            {isRenaming && (
+                 <div className="mb-4 p-4 border rounded shadow">
+                    <input type="text" value={renamingChapterName} onChange={(e) => setRenamingChapterName(e.target.value)} className="border p-2 w-full mb-2" />
+                    <button onClick={handleSaveRename} className="bg-green-500 text-white p-2 rounded mr-2">Save Rename</button>
+                    <button onClick={() => setIsRenaming(false)} className="bg-gray-500 text-white p-2 rounded">Cancel</button>
+                </div>
+            )}
+
+            {loading ? <ChaptersSkeleton /> : (
                 <div>
-                    {isAdding && (
-                        <div className="mb-4 p-4 border rounded shadow">
-                            <input
-                                type="text"
-                                value={newChapterName}
-                                onChange={(e) => setNewChapterName(e.target.value)}
-                                placeholder="New chapter name"
-                                className="border p-2 w-full mb-2"
-                            />
-                            <button onClick={handleSaveChapter} className="bg-green-500 text-white p-2 rounded mr-2">Save</button>
-                            <button onClick={() => setIsAdding(false)} className="bg-gray-500 text-white p-2 rounded">Cancel</button>
-                        </div>
-                    )}
-                    {isRenaming && (
-                         <div className="mb-4 p-4 border rounded shadow">
-                            <input type="text" value={renamingChapterName} onChange={(e) => setRenamingChapterName(e.target.value)} className="border p-2 w-full mb-2" />
-                            <button onClick={handleSaveRename} className="bg-green-500 text-white p-2 rounded mr-2">Save Rename</button>
-                            <button onClick={() => setIsRenaming(false)} className="bg-gray-500 text-white p-2 rounded">Cancel</button>
-                        </div>
-                    )}
                     {chapters.length > 0 ? (
                         <ul className="space-y-2">
                             {chapters.map(chapter => (

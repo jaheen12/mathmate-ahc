@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, 'useState', useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { db } from '../firebaseConfig';
 import { collection, getDocs, addDoc, deleteDoc, doc } from 'firebase/firestore';
@@ -7,6 +7,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { FaPlus } from "react-icons/fa";
 import { MdDelete } from "react-icons/md";
 import { IoArrowBack } from "react-icons/io5";
+import Skeleton from 'react-loading-skeleton'; // Import the skeleton component
 
 const ResourceItems = () => {
     const { categoryId, chapterId } = useParams();
@@ -72,6 +73,18 @@ const ResourceItems = () => {
         }
     };
 
+    // --- Loading Skeleton component for Items ---
+    const ItemsSkeleton = () => (
+        <div className="space-y-2">
+            {Array(5).fill().map((_, index) => (
+                <div key={index} className="flex justify-between items-center p-3 bg-gray-100 rounded shadow-sm">
+                    <Skeleton width={'70%'} height={24} />
+                    <Skeleton circle={true} height={32} width={32} />
+                </div>
+            ))}
+        </div>
+    );
+
     return (
         <div className="container mx-auto p-4">
             <div className="flex justify-between items-center mb-4">
@@ -84,28 +97,29 @@ const ResourceItems = () => {
                 )}
             </div>
 
-            {loading ? <p>Loading items...</p> : (
+            {isAdding && (
+                <div className="mb-4 p-4 border rounded shadow">
+                    <input
+                        type="text"
+                        value={newItemName}
+                        onChange={(e) => setNewItemName(e.target.value)}
+                        placeholder="Item name"
+                        className="border p-2 w-full mb-2"
+                    />
+                    <input
+                        type="url"
+                        value={newItemLink}
+                        onChange={(e) => setNewItemLink(e.target.value)}
+                        placeholder="Item link (URL)"
+                        className="border p-2 w-full mb-2"
+                    />
+                    <button onClick={handleSaveItem} className="bg-green-500 text-white p-2 rounded mr-2">Save</button>
+                    <button onClick={() => setIsAdding(false)} className="bg-gray-500 text-white p-2 rounded">Cancel</button>
+                </div>
+            )}
+            
+            {loading ? <ItemsSkeleton /> : (
                 <div>
-                    {isAdding && (
-                        <div className="mb-4 p-4 border rounded shadow">
-                            <input
-                                type="text"
-                                value={newItemName}
-                                onChange={(e) => setNewItemName(e.target.value)}
-                                placeholder="Item name"
-                                className="border p-2 w-full mb-2"
-                            />
-                            <input
-                                type="url"
-                                value={newItemLink}
-                                onChange={(e) => setNewItemLink(e.target.value)}
-                                placeholder="Item link (URL)"
-                                className="border p-2 w-full mb-2"
-                            />
-                            <button onClick={handleSaveItem} className="bg-green-500 text-white p-2 rounded mr-2">Save</button>
-                            <button onClick={() => setIsAdding(false)} className="bg-gray-500 text-white p-2 rounded">Cancel</button>
-                        </div>
-                    )}
                     {items.length > 0 ? (
                         <ul className="space-y-2">
                             {items.map(item => (

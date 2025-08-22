@@ -1,4 +1,11 @@
 // src/main.jsx
+// Add this line at the top of src/main.jsx
+import 'react-loading-skeleton/dist/skeleton.css'
+
+// ... rest of your main.jsx file
+import React from 'react'
+import ReactDOM from 'react-dom/client'
+// ...
 import { Capacitor } from '@capacitor/core';
 window.Capacitor = Capacitor;
 import React from 'react';

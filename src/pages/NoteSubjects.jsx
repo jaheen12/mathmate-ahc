@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { db } from '../firebaseConfig'; // Ensure this path is correct
+import { db } from '../firebaseConfig';
 import { collection, getDocs, addDoc, deleteDoc, doc, updateDoc } from 'firebase/firestore';
 import { toast } from 'react-toastify';
 import { useAuth } from '../contexts/AuthContext';
 import { FaPlus } from "react-icons/fa";
 import { MdDelete, MdEdit } from "react-icons/md";
 import { IoArrowBack } from "react-icons/io5";
+import Skeleton from 'react-loading-skeleton'; // Import the skeleton component
 
 const NoteSubjects = () => {
   const [subjects, setSubjects] = useState([]);
@@ -20,10 +21,9 @@ const NoteSubjects = () => {
   const navigate = useNavigate();
   const { currentUser } = useAuth();
 
-  // Simplified useEffect to fetch data. Firestore's offline persistence handles caching.
   useEffect(() => {
     const fetchSubjects = async () => {
-      setLoading(true);
+      setLoading(true); // Keep this to trigger the skeleton
       try {
         const querySnapshot = await getDocs(collection(db, "official_notes"));
         const subjectsData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
@@ -36,8 +36,11 @@ const NoteSubjects = () => {
       }
     };
 
-    fetchSubjects();
-  }, []); // Empty dependency array ensures this runs only once on mount
+    // Simulate a slightly longer load time to see the skeleton effect
+    setTimeout(() => {
+        fetchSubjects();
+    }, 500); // You can remove this timeout later, it's for testing
+  }, []);
 
   const handleAddSubject = () => {
     setIsAdding(true);
@@ -106,6 +109,21 @@ const NoteSubjects = () => {
     navigate(`/notes/${subjectId}`);
   };
 
+  // --- This is the new Loading Skeleton component ---
+  const SubjectsSkeleton = () => (
+    <div className="space-y-2">
+      {Array(5).fill().map((_, index) => (
+        <div key={index} className="flex justify-between items-center p-3 bg-gray-100 rounded shadow-sm">
+          <Skeleton width={'60%'} height={24} />
+          <div className="flex items-center">
+            <Skeleton circle={true} height={32} width={32} style={{ marginRight: '10px' }} />
+            <Skeleton circle={true} height={32} width={32} />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+
   return (
     <div className="container mx-auto p-4">
       <div className="flex justify-between items-center mb-4">
@@ -118,37 +136,36 @@ const NoteSubjects = () => {
         )}
       </div>
 
+      {isAdding && ( // These forms are separate from the loading state
+        <div className="mb-4 p-4 border rounded shadow">
+          <input
+            type="text"
+            value={newSubjectName}
+            onChange={(e) => setNewSubjectName(e.target.value)}
+            className="border p-2 w-full mb-2"
+            placeholder="New subject name"
+          />
+          <button onClick={handleSaveSubject} className="bg-green-500 text-white p-2 rounded mr-2">Save</button>
+          <button onClick={() => setIsAdding(false)} className="bg-gray-500 text-white p-2 rounded">Cancel</button>
+        </div>
+      )}
+      {isRenaming && (
+        <div className="mb-4 p-4 border rounded shadow">
+          <input
+            type="text"
+            value={renamingSubjectName}
+            onChange={(e) => setRenamingSubjectName(e.target.value)}
+            className="border p-2 w-full mb-2"
+          />
+          <button onClick={handleSaveRename} className="bg-green-500 text-white p-2 rounded mr-2">Save</button>
+          <button onClick={() => setIsRenaming(false)} className="bg-gray-500 text-white p-2 rounded">Cancel</button>
+        </div>
+      )}
+
       {loading ? (
-        <p>Loading subjects...</p>
+        <SubjectsSkeleton /> // Use the skeleton component here
       ) : (
         <div>
-          {isAdding && (
-            <div className="mb-4 p-4 border rounded shadow">
-              <input
-                type="text"
-                value={newSubjectName}
-                onChange={(e) => setNewSubjectName(e.target.value)}
-                className="border p-2 w-full mb-2"
-                placeholder="New subject name"
-              />
-              <button onClick={handleSaveSubject} className="bg-green-500 text-white p-2 rounded mr-2">Save</button>
-              <button onClick={() => setIsAdding(false)} className="bg-gray-500 text-white p-2 rounded">Cancel</button>
-            </div>
-          )}
-
-          {isRenaming && (
-            <div className="mb-4 p-4 border rounded shadow">
-              <input
-                type="text"
-                value={renamingSubjectName}
-                onChange={(e) => setRenamingSubjectName(e.target.value)}
-                className="border p-2 w-full mb-2"
-              />
-              <button onClick={handleSaveRename} className="bg-green-500 text-white p-2 rounded mr-2">Save</button>
-              <button onClick={() => setIsRenaming(false)} className="bg-gray-500 text-white p-2 rounded">Cancel</button>
-            </div>
-          )}
-          
           {subjects.length > 0 ? (
             <ul className="space-y-2">
               {subjects.map(subject => (

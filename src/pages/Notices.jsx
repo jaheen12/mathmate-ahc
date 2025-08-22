@@ -7,6 +7,7 @@ import { FaPlus } from "react-icons/fa";
 import { IoArrowBack } from "react-icons/io5";
 import NoticeCard from '../components/NoticeCard';
 import { Link } from 'react-router-dom';
+import Skeleton from 'react-loading-skeleton'; // Import the skeleton component
 
 const Notices = () => {
     const [notices, setNotices] = useState([]);
@@ -21,7 +22,6 @@ const Notices = () => {
             try {
                 const querySnapshot = await getDocs(collection(db, "notices"));
                 const noticesData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                // Sort notices by creation date, newest first
                 noticesData.sort((a, b) => b.createdAt.toDate() - a.createdAt.toDate());
                 setNotices(noticesData);
             } catch (error) {
@@ -84,6 +84,22 @@ const Notices = () => {
         }
     };
 
+    // --- Loading Skeleton for Notices ---
+    const NoticesSkeleton = () => (
+        <div className="space-y-4">
+            {Array(3).fill().map((_, index) => (
+                <div key={index} className="p-4 border rounded-lg shadow bg-white">
+                    <Skeleton height={28} width="70%" style={{ marginBottom: '12px' }} />
+                    <Skeleton count={3} />
+                    <div className="flex justify-end mt-4">
+                        <Skeleton height={32} width={32} circle style={{ marginRight: '10px' }} />
+                        <Skeleton height={32} width={32} circle />
+                    </div>
+                </div>
+            ))}
+        </div>
+    );
+
     return (
         <div className="container mx-auto p-4">
              <div className="flex justify-between items-center mb-4">
@@ -96,28 +112,29 @@ const Notices = () => {
                 )}
             </div>
 
-            {loading ? <p>Loading notices...</p> : (
+            {isAdding && (
+                <div className="mb-4 p-4 border rounded shadow">
+                    <input
+                        type="text"
+                        value={newNotice.title}
+                        onChange={(e) => setNewNotice({ ...newNotice, title: e.target.value })}
+                        placeholder="Notice title"
+                        className="border p-2 w-full mb-2"
+                    />
+                    <textarea
+                        value={newNotice.content}
+                        onChange={(e) => setNewNotice({ ...newNotice, content: e.target.value })}
+                        placeholder="Notice content"
+                        className="border p-2 w-full mb-2"
+                        rows="4"
+                    />
+                    <button onClick={handleSaveNotice} className="bg-green-500 text-white p-2 rounded mr-2">Save</button>
+                    <button onClick={() => setIsAdding(false)} className="bg-gray-500 text-white p-2 rounded">Cancel</button>
+                </div>
+            )}
+
+            {loading ? <NoticesSkeleton /> : (
                 <div>
-                    {isAdding && (
-                        <div className="mb-4 p-4 border rounded shadow">
-                            <input
-                                type="text"
-                                value={newNotice.title}
-                                onChange={(e) => setNewNotice({ ...newNotice, title: e.target.value })}
-                                placeholder="Notice title"
-                                className="border p-2 w-full mb-2"
-                            />
-                            <textarea
-                                value={newNotice.content}
-                                onChange={(e) => setNewNotice({ ...newNotice, content: e.target.value })}
-                                placeholder="Notice content"
-                                className="border p-2 w-full mb-2"
-                                rows="4"
-                            />
-                            <button onClick={handleSaveNotice} className="bg-green-500 text-white p-2 rounded mr-2">Save</button>
-                            <button onClick={() => setIsAdding(false)} className="bg-gray-500 text-white p-2 rounded">Cancel</button>
-                        </div>
-                    )}
                     {notices.length > 0 ? (
                         <div className="space-y-4">
                             {notices.map(notice => (
