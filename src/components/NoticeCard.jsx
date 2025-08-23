@@ -49,7 +49,7 @@ const NoticeCard = ({ notice, onDelete, onEdit }) => {
             setIsDeleting(true);
             try {
                 await onDelete(notice.id);
-            } catch (error) {
+            } catch (_error) {
                 setIsDeleting(false);
             }
         }

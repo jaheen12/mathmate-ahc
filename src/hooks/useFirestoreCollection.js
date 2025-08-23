@@ -8,7 +8,6 @@ import {
     deleteDoc, 
     doc, 
     updateDoc, 
-    query as firestoreQuery, 
     onSnapshot,
     writeBatch,
     serverTimestamp 
@@ -186,7 +185,7 @@ export const useFirestoreCollection = (queryOrPath, options = {}) => {
                 unsubscribeRef.current = null;
             }
         };
-    }, [queryString, enableRealtime, includeMetadata, onError, onDataChange, retryAttempts, retryDelay]);
+    }, [queryOrPath, queryString, enableRealtime, includeMetadata, onError, onDataChange, retryAttempts, retryDelay]);
 
     const addItem = useCallback(async (newItemData, customToast = true) => {
         if (!collectionRef) {

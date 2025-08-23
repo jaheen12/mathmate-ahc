@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { toast } from 'react-toastify';
-import { format, startOfDay, isAfter, parseISO } from 'date-fns';
+import { format, startOfDay, parseISO } from 'date-fns';
 import Skeleton from 'react-loading-skeleton';
 import { 
     IoCheckmarkCircle, 
@@ -223,7 +223,7 @@ const Attendance = ({ setHeaderTitle }) => {
                 
                 toast.success(`Attendance for ${selectedDate} saved locally!`);
                 setHasUnsavedChanges(false);
-            } catch (error) {
+            } catch (_error) {
                 console.error("Error saving attendance to local storage: ", error);
                 toast.error("Failed to save changes.");
             }
@@ -242,7 +242,7 @@ const Attendance = ({ setHeaderTitle }) => {
             link.click();
             URL.revokeObjectURL(url);
             toast.success('Attendance data exported successfully!');
-        } catch (error) {
+        } catch (_error) {
             toast.error('Failed to export data.');
         }
     }, [allRecords]);

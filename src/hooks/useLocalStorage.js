@@ -248,17 +248,21 @@ function useLocalStorage(key, initialValue, options = {}) {
     };
 }
 
-// Legacy array return for backward compatibility
-useLocalStorage.asArray = function(key, initialValue, options = {}) {
+// New hook for legacy array return
+export function useLocalStorageAsArray(key, initialValue, options = {}) {
     const { value, setValue, removeValue, getCurrentValue, refresh, isSupported } = useLocalStorage(key, initialValue, options);
     
     // Add remove and other methods to the setter function for convenience
-    setValue.remove = removeValue;
-    setValue.getCurrentValue = getCurrentValue;
-    setValue.refresh = refresh;
-    setValue.isSupported = isSupported;
+    const setter = useCallback((newValue) => {
+        setValue(newValue);
+    }, [setValue]);
+
+    setter.remove = removeValue;
+    setter.getCurrentValue = getCurrentValue;
+    setter.refresh = refresh;
+    setter.isSupported = isSupported;
     
-    return [value, setValue];
-};
+    return [value, setter];
+}
 
 export default useLocalStorage;

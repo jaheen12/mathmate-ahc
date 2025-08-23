@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { RadialBarChart, RadialBar, ResponsiveContainer, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid, LineChart, Line, PieChart, Pie, Cell } from 'recharts';
-import { TrendingUp, TrendingDown, Users, BookOpen, Calendar, Eye, BarChart3, Target, Activity } from 'lucide-react';
+import { TrendingUp, TrendingDown, Users, BookOpen, Calendar, BarChart3, Target, Activity } from 'lucide-react';
 
 const TRACKED_SUBJECTS = ["Major", "NM-PHY", "NM-STAT"];
 const COLORS = {
@@ -112,11 +112,7 @@ const AttendanceChart = ({ attendanceData = [] }) => {
     const overallStatus = getAttendanceStatus(overall);
     const StatusIcon = overallStatus.icon;
 
-    // Data for different chart types
-    const radialData = bySubject.map(subject => ({
-        ...subject,
-        value: subject.percentage,
-    }));
+    
 
     // View mode options
     const viewModeOptions = [

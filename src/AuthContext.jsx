@@ -10,7 +10,8 @@ export function useAuth() {
 
 export function AuthProvider({ children }) {
     const [currentUser, setCurrentUser] = useState(null);
-    const [loading, setLoading] = useState(true);
+    // Ignore the unused 'loading' variable by prefixing it with an underscore.
+    const [_loading, setLoading] = useState(true);
 
     useEffect(() => {
         // This function will be called by Firebase when the user's login state is first checked,
@@ -27,11 +28,9 @@ export function AuthProvider({ children }) {
     const value = {
         currentUser
     };
-
-    // --- THIS IS THE CRITICAL FIX ---
-    // We are removing the '!loading &&' check.
+    
     // The AuthProvider's only job is to provide the context value.
-    // The pages themselves will show a loading state if they need to.
+    // Pages that consume this context can decide what to render based on the value.
     return (
         <AuthContext.Provider value={value}>
             {children}

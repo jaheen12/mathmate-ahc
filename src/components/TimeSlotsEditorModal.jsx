@@ -15,8 +15,7 @@ const TimeSlotsEditorModal = ({ isOpen, onClose, initialTimeSlots, onSave }) => 
     const [timeSlots, setTimeSlots] = useState([]);
     const [isSaving, setIsSaving] = useState(false);
     const [errors, setErrors] = useState({});
-    const [isDragging, setIsDragging] = useState(false);
-
+    
     useEffect(() => {
         if (isOpen) {
             setTimeSlots(initialTimeSlots || []);
