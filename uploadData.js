@@ -1,5 +1,7 @@
 // uploadData.js
-import { collection, doc, setDoc, writeBatch } from 'firebase/firestore';
+
+/* eslint-env node */
+import { doc, writeBatch } from 'firebase/firestore';
 import { db } from './src/firebaseConfig.js';
 import { schedule, resources, courses, tasks, officialNotes } from './src/data/masterData.js';
 

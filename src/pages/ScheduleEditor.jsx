@@ -162,8 +162,8 @@ const ScheduleEditor = () => {
             setTimeout(() => {
                 navigate('/schedule');
             }, 1500);
-        } catch (error) {
-            setSaveStatus('error');
+        } catch (_error) {
+            setSaveStatus('_error');
         } finally {
             setIsSaving(false);
         }

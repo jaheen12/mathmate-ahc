@@ -255,7 +255,7 @@ const ResourceItems = ({ setHeaderTitle }) => {
           <ItemsSkeleton />
         ) : filteredItems.length > 0 ? (
           <div className="space-y-3">
-            {filteredItems.map((item, index) => (
+            {filteredItems.map((item) => (
               <div 
                 key={item.id} 
                 className="group bg-white rounded-xl shadow-sm border border-gray-200 hover:shadow-lg hover:border-indigo-200 transition-all duration-300 overflow-hidden"

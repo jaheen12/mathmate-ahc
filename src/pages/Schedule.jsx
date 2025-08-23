@@ -8,6 +8,7 @@ import ScheduleView from '../components/ScheduleView';
 import TimeSlotsEditorModal from '../components/TimeSlotsEditorModal';
 
 // Move MobileActionButton outside to prevent re-creation
+// Move MobileActionButton outside to prevent re-creation
 const MobileActionButton = React.memo(({ onClick, to, icon: Icon, children, variant = 'secondary', fullWidth = false }) => {
     const baseClasses = `group relative inline-flex items-center justify-center font-semibold transition-all duration-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-offset-1 active:scale-95 ${fullWidth ? 'w-full' : ''}`;
     
@@ -20,7 +21,7 @@ const MobileActionButton = React.memo(({ onClick, to, icon: Icon, children, vari
 
     const buttonClasses = `${baseClasses} ${variants[variant]}`;
 
-    const ButtonContent = () => (
+    const content = (
         <>
             <Icon className={`${variant === 'compact' ? 'w-4 h-4' : 'w-5 h-5'} ${children ? 'mr-2' : ''} transition-transform group-hover:scale-110`} />
             {children && <span className="relative font-medium">{children}</span>}
@@ -30,14 +31,14 @@ const MobileActionButton = React.memo(({ onClick, to, icon: Icon, children, vari
     if (to) {
         return (
             <Link to={to} className={buttonClasses}>
-                <ButtonContent />
+                {content}
             </Link>
         );
     }
 
     return (
         <button onClick={onClick} className={buttonClasses}>
-            <ButtonContent />
+            {content}
         </button>
     );
 });
