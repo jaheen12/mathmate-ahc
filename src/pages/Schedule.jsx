@@ -8,7 +8,6 @@ import ScheduleView from '../components/ScheduleView';
 import TimeSlotsEditorModal from '../components/TimeSlotsEditorModal';
 
 // Move MobileActionButton outside to prevent re-creation
-// Move MobileActionButton outside to prevent re-creation
 const MobileActionButton = React.memo(({ onClick, to, icon: Icon, children, variant = 'secondary', fullWidth = false }) => {
     const baseClasses = `group relative inline-flex items-center justify-center font-semibold transition-all duration-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-offset-1 active:scale-95 ${fullWidth ? 'w-full' : ''}`;
     

@@ -163,10 +163,10 @@ const ScheduleEditor = () => {
                 navigate('/schedule');
             }, 1500);
         } catch (_error) {
-            setSaveStatus('_error');
-        } finally {
-            setIsSaving(false);
-        }
+    console.error("Error saving schedule: ", _error); // <-- Corrected line
+    toast.error("Failed to save schedule.");
+    setIsSaving(false);
+}
     };
 
     const getDayColor = useCallback((index) => {
