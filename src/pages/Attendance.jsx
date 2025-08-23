@@ -1,26 +1,160 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { toast } from 'react-toastify';
-import { format, startOfDay } from 'date-fns';
+import { format, startOfDay, isAfter, parseISO } from 'date-fns';
 import Skeleton from 'react-loading-skeleton';
-import { IoCheckmarkCircle, IoCloseCircle, IoSaveOutline } from 'react-icons/io5';
-import useLocalStorage from '../hooks/useLocalStorage'; // Custom hook for local storage
+import { 
+    IoCheckmarkCircle, 
+    IoCloseCircle, 
+    IoSaveOutline, 
+    IoCalendarOutline,
+    IoStatsChartOutline,
+    IoDownloadOutline,
+    IoTrashOutline,
+    IoWarningOutline
+} from 'react-icons/io5';
+import useLocalStorage from '../hooks/useLocalStorage';
 
-// The component now accepts the 'setHeaderTitle' prop
+const AttendanceCard = React.memo(({ 
+    subject, 
+    stats, 
+    draftStatus, 
+    onStatusChange, 
+    isHistoricalDate 
+}) => {
+    const getPercentageColor = (percentage) => {
+        if (percentage >= 75) return 'text-green-600';
+        if (percentage >= 60) return 'text-yellow-600';
+        return 'text-red-600';
+    };
+
+    const getPercentageBackground = (percentage) => {
+        if (percentage >= 75) return 'from-green-50 to-green-100';
+        if (percentage >= 60) return 'from-yellow-50 to-yellow-100';
+        return 'from-red-50 to-red-100';
+    };
+
+    return (
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+            {/* Header */}
+            <div className={`bg-gradient-to-r ${getPercentageBackground(stats.percentage)} p-4 border-b border-gray-100`}>
+                <div className="flex justify-between items-center">
+                    <h3 className="text-lg font-bold text-gray-900">{subject}</h3>
+                    <div className="text-right">
+                        <p className={`text-3xl font-bold ${getPercentageColor(stats.percentage)}`}>
+                            {stats.percentage}%
+                        </p>
+                        <p className="text-xs text-gray-600">
+                            {stats.present} / {stats.total} classes
+                        </p>
+                    </div>
+                </div>
+                
+                {/* Progress Bar */}
+                <div className="mt-3 bg-white/50 rounded-full h-2 overflow-hidden">
+                    <div 
+                        className={`h-full transition-all duration-300 ${
+                            stats.percentage >= 75 ? 'bg-green-500' :
+                            stats.percentage >= 60 ? 'bg-yellow-500' : 'bg-red-500'
+                        }`}
+                        style={{ width: `${Math.min(stats.percentage, 100)}%` }}
+                    />
+                </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="p-4">
+                {isHistoricalDate && (
+                    <div className="mb-3 p-2 bg-gray-100 rounded-lg flex items-center gap-2">
+                        <IoWarningOutline className="w-4 h-4 text-gray-600" />
+                        <span className="text-xs text-gray-600">Editing past attendance</span>
+                    </div>
+                )}
+                
+                <div className="grid grid-cols-2 gap-3">
+                    <button
+                        onClick={() => onStatusChange(subject, 'present')}
+                        className={`p-4 rounded-xl flex items-center justify-center font-semibold transition-all duration-200 active:scale-95 ${
+                            draftStatus === 'present' 
+                                ? 'bg-gradient-to-r from-green-500 to-green-600 text-white shadow-lg hover:shadow-xl' 
+                                : 'bg-gray-100 hover:bg-green-100 text-gray-700 hover:text-green-700 border-2 border-transparent hover:border-green-200'
+                        }`}
+                    >
+                        <IoCheckmarkCircle className="mr-2 w-5 h-5" />
+                        Present
+                    </button>
+                    <button
+                        onClick={() => onStatusChange(subject, 'absent')}
+                        className={`p-4 rounded-xl flex items-center justify-center font-semibold transition-all duration-200 active:scale-95 ${
+                            draftStatus === 'absent' 
+                                ? 'bg-gradient-to-r from-red-500 to-red-600 text-white shadow-lg hover:shadow-xl' 
+                                : 'bg-gray-100 hover:bg-red-100 text-gray-700 hover:text-red-700 border-2 border-transparent hover:border-red-200'
+                        }`}
+                    >
+                        <IoCloseCircle className="mr-2 w-5 h-5" />
+                        Absent
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+});
+
+AttendanceCard.displayName = 'AttendanceCard';
+
+const AttendanceSkeleton = React.memo(() => (
+    <div className="p-4 space-y-6">
+        {/* Header Skeleton */}
+        <div className="bg-white p-4 rounded-2xl shadow-sm">
+            <div className="flex justify-between items-center animate-pulse">
+                <div className="h-4 bg-gray-200 rounded w-32"></div>
+                <div className="h-10 bg-gray-200 rounded w-40"></div>
+            </div>
+        </div>
+        
+        {/* Cards Skeleton */}
+        <div className="space-y-4">
+            {[1, 2, 3].map((i) => (
+                <div key={i} className="bg-white p-4 rounded-2xl shadow-sm animate-pulse">
+                    <div className="flex justify-between items-center mb-4">
+                        <div className="h-6 bg-gray-200 rounded w-20"></div>
+                        <div className="text-right">
+                            <div className="h-8 bg-gray-200 rounded w-12 mb-1"></div>
+                            <div className="h-3 bg-gray-200 rounded w-16"></div>
+                        </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                        <div className="h-12 bg-gray-200 rounded-xl"></div>
+                        <div className="h-12 bg-gray-200 rounded-xl"></div>
+                    </div>
+                </div>
+            ))}
+        </div>
+    </div>
+));
+
+AttendanceSkeleton.displayName = 'AttendanceSkeleton';
+
 const Attendance = ({ setHeaderTitle }) => {
-    const [allRecords, setAllRecords] = useLocalStorage('attendanceRecords', []);
+    const { value: allRecords, setValue: setAllRecords } = useLocalStorage('attendanceRecords', []);
     const [selectedDate, setSelectedDate] = useState(format(startOfDay(new Date()), 'yyyy-MM-dd'));
     const [draftForDate, setDraftForDate] = useState({});
     const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
     const [loading, setLoading] = useState(true);
     
-    // Set the header title for this page
     useEffect(() => {
         setHeaderTitle('Attendance');
     }, [setHeaderTitle]);
 
-    const mainSubjects = ["Major", "NM-PHY", "NM-STAT"];
+    const mainSubjects = useMemo(() => ["Major", "NM-PHY", "NM-STAT"], []);
+    
+    // Check if selected date is in the past
+    const isHistoricalDate = useMemo(() => {
+        const today = startOfDay(new Date());
+        const selected = startOfDay(parseISO(selectedDate));
+        return selected < today;
+    }, [selectedDate]);
 
-    // Load records from local storage and set initial draft
+    // Load records and set initial draft
     useEffect(() => {
         setLoading(true);
         const recordsForSelectedDate = {};
@@ -45,10 +179,17 @@ const Attendance = ({ setHeaderTitle }) => {
             stats[subject] = { percentage, present, total };
         });
         return stats;
+    }, [allRecords, mainSubjects]);
+
+    // Overall statistics across all subjects
+    const overallStats = useMemo(() => {
+        const totalClasses = allRecords.length;
+        const totalPresent = allRecords.filter(r => r.status === 'present').length;
+        const overallPercentage = totalClasses > 0 ? Math.round((totalPresent / totalClasses) * 100) : 0;
+        return { totalClasses, totalPresent, overallPercentage };
     }, [allRecords]);
 
-    // Handle local state changes for the current draft
-    const handleStatusChange = (subject, status) => {
+    const handleStatusChange = useCallback((subject, status) => {
         setDraftForDate(prevDraft => {
             const currentStatus = prevDraft[subject]?.status;
             const newDraft = { ...prevDraft };
@@ -61,10 +202,9 @@ const Attendance = ({ setHeaderTitle }) => {
             return newDraft;
         });
         setHasUnsavedChanges(true);
-    };
+    }, []);
     
-    // Save all changes for the selected date to Local Storage
-    const handleSaveChanges = () => {
+    const handleSaveChanges = useCallback(() => {
         if (window.confirm(`Save attendance changes for ${selectedDate}?`)) {
             try {
                 // Filter out old records for the selected date
@@ -74,7 +214,8 @@ const Attendance = ({ setHeaderTitle }) => {
                 const newRecordsForDate = Object.entries(draftForDate).map(([subject, { status }]) => ({
                     date: selectedDate,
                     subject,
-                    status
+                    status,
+                    timestamp: new Date().toISOString() // Add timestamp for data tracking
                 }));
 
                 // Combine and set the new state
@@ -87,72 +228,153 @@ const Attendance = ({ setHeaderTitle }) => {
                 toast.error("Failed to save changes.");
             }
         }
-    };
-    
+    }, [selectedDate, draftForDate, allRecords, setAllRecords]);
+
+    // Export attendance data as JSON
+    const handleExportData = useCallback(() => {
+        try {
+            const dataStr = JSON.stringify(allRecords, null, 2);
+            const dataBlob = new Blob([dataStr], { type: 'application/json' });
+            const url = URL.createObjectURL(dataBlob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `attendance-data-${format(new Date(), 'yyyy-MM-dd')}.json`;
+            link.click();
+            URL.revokeObjectURL(url);
+            toast.success('Attendance data exported successfully!');
+        } catch (error) {
+            toast.error('Failed to export data.');
+        }
+    }, [allRecords]);
+
+    // Clear all attendance data
+    const handleClearAllData = useCallback(() => {
+        if (window.confirm('Are you sure you want to delete ALL attendance data? This cannot be undone.')) {
+            setAllRecords([]);
+            setDraftForDate({});
+            setHasUnsavedChanges(false);
+            toast.success('All attendance data cleared.');
+        }
+    }, [setAllRecords]);
+
     if (loading) {
-        return <div className="p-4"><Skeleton count={5} height={80} /></div>;
+        return <AttendanceSkeleton />;
     }
 
     return (
-        <div className="p-4 space-y-6">
-            <div className="bg-white p-4 rounded-lg shadow-md">
-                <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-                    <div>
-                        <label htmlFor="attendance-date" className="block text-sm font-medium text-gray-700 mb-1">
-                            Showing attendance for:
-                        </label>
+        <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50/20 px-4 py-2">
+            {/* Header Card */}
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 mb-6">
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                    <div className="flex items-center gap-3">
+                        <div className="p-2 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl">
+                            <IoCalendarOutline className="w-6 h-6 text-white" />
+                        </div>
+                        <div>
+                            <h1 className="text-xl font-bold text-gray-900">Attendance Tracker</h1>
+                            <label htmlFor="attendance-date" className="text-sm text-gray-600">
+                                Select date to track attendance
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <div className="flex items-center gap-3 w-full md:w-auto">
                         <input
                             id="attendance-date"
                             type="date"
                             value={selectedDate}
                             onChange={(e) => setSelectedDate(e.target.value)}
-                            className="border p-2 rounded-md shadow-sm"
+                            className="flex-1 md:flex-initial border-2 border-gray-200 p-2 rounded-xl shadow-sm focus:border-blue-300 focus:ring-2 focus:ring-blue-300 focus:ring-opacity-20 transition-all"
                         />
+                        
+                        {hasUnsavedChanges && (
+                            <button 
+                                onClick={handleSaveChanges} 
+                                className="flex items-center justify-center px-4 py-2 bg-gradient-to-r from-green-500 to-green-600 text-white font-semibold rounded-xl shadow-md hover:shadow-lg transition-all duration-200 active:scale-95 animate-pulse"
+                            >
+                                <IoSaveOutline className="mr-2 w-4 h-4" />
+                                <span className="hidden sm:inline">Save Changes</span>
+                                <span className="sm:hidden">Save</span>
+                            </button>
+                        )}
                     </div>
-                    {hasUnsavedChanges && (
-                        <button 
-                            onClick={handleSaveChanges} 
-                            className="flex items-center w-full md:w-auto justify-center px-4 py-2 bg-green-500 text-white font-semibold rounded-lg shadow-md hover:bg-green-600 animate-pulse"
-                        >
-                            <IoSaveOutline className="mr-2" />
-                            Save Changes for {selectedDate}
-                        </button>
-                    )}
                 </div>
             </div>
 
-            <div className="space-y-4">
+            {/* Overall Stats Card */}
+            <div className="bg-gradient-to-r from-blue-50 to-purple-50 border border-blue-200 rounded-2xl p-4 mb-6">
+                <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                        <div className="p-2 bg-blue-500 rounded-lg">
+                            <IoStatsChartOutline className="w-5 h-5 text-white" />
+                        </div>
+                        <div>
+                            <h3 className="font-bold text-blue-900">Overall Statistics</h3>
+                            <p className="text-xs text-blue-700">
+                                {overallStats.totalPresent} / {overallStats.totalClasses} total classes
+                            </p>
+                        </div>
+                    </div>
+                    <div className="text-right">
+                        <p className="text-3xl font-bold text-blue-600">{overallStats.overallPercentage}%</p>
+                        <p className="text-xs text-blue-600">Overall Attendance</p>
+                    </div>
+                </div>
+            </div>
+
+            {/* Subject Cards */}
+            <div className="space-y-4 mb-6">
                 {mainSubjects.map(subject => {
                     const stats = attendanceStats[subject] || { percentage: 0, present: 0, total: 0 };
                     const draftStatus = draftForDate[subject]?.status;
                     return (
-                        <div key={subject} className="bg-white p-4 rounded-lg shadow-md">
-                            <div className="flex justify-between items-center mb-3">
-                                <h3 className="text-lg font-semibold text-gray-700">{subject}</h3>
-                                <div className="text-right">
-                                    <p className="text-2xl font-bold text-blue-600">{stats.percentage}%</p>
-                                    <p className="text-xs text-gray-500">({stats.present} / {stats.total} classes)</p>
-                                </div>
-                            </div>
-                            <div className="grid grid-cols-2 gap-2">
-                                <button
-                                    onClick={() => handleStatusChange(subject, 'present')}
-                                    className={`p-3 rounded-lg flex items-center justify-center font-semibold transition-all ${draftStatus === 'present' ? 'bg-green-500 text-white shadow-lg' : 'bg-gray-200 hover:bg-green-200'}`}
-                                >
-                                    <IoCheckmarkCircle className="mr-2" />
-                                    Attended
-                                </button>
-                                <button
-                                    onClick={() => handleStatusChange(subject, 'absent')}
-                                    className={`p-3 rounded-lg flex items-center justify-center font-semibold transition-all ${draftStatus === 'absent' ? 'bg-red-500 text-white shadow-lg' : 'bg-gray-200 hover:bg-red-200'}`}
-                                >
-                                    <IoCloseCircle className="mr-2" />
-                                    Absent
-                                </button>
-                            </div>
-                        </div>
+                        <AttendanceCard
+                            key={subject}
+                            subject={subject}
+                            stats={stats}
+                            draftStatus={draftStatus}
+                            onStatusChange={handleStatusChange}
+                            isHistoricalDate={isHistoricalDate}
+                        />
                     );
                 })}
+            </div>
+
+            {/* Action Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-6">
+                <button 
+                    onClick={handleExportData}
+                    disabled={allRecords.length === 0}
+                    className="flex items-center justify-center gap-2 p-4 bg-white border-2 border-gray-200 rounded-xl hover:border-blue-300 hover:bg-blue-50 transition-all duration-200 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                    <IoDownloadOutline className="w-5 h-5 text-blue-600" />
+                    <span className="font-medium text-gray-700">Export Data</span>
+                </button>
+                
+                <button 
+                    onClick={handleClearAllData}
+                    disabled={allRecords.length === 0}
+                    className="flex items-center justify-center gap-2 p-4 bg-white border-2 border-red-200 rounded-xl hover:border-red-300 hover:bg-red-50 transition-all duration-200 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                    <IoTrashOutline className="w-5 h-5 text-red-600" />
+                    <span className="font-medium text-red-700">Clear All Data</span>
+                </button>
+            </div>
+
+            {/* Info Card */}
+            <div className="bg-gradient-to-r from-blue-50 to-purple-50 border border-blue-200 rounded-2xl p-4">
+                <div className="flex items-start gap-3">
+                    <div className="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center flex-shrink-0">
+                        <IoWarningOutline className="w-4 h-4 text-white" />
+                    </div>
+                    <div>
+                        <h4 className="font-semibold text-blue-900 text-sm mb-1">Local Storage Notice</h4>
+                        <p className="text-blue-700 text-xs leading-relaxed">
+                            Your attendance data is stored locally on this device. Export your data regularly to avoid loss. 
+                            Data will not sync across different devices or browsers.
+                        </p>
+                    </div>
+                </div>
             </div>
         </div>
     );

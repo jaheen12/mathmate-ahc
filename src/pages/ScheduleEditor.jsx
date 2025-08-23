@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import Skeleton from 'react-loading-skeleton';
 import { 
@@ -15,6 +15,71 @@ import {
 } from "react-icons/io5";
 import { useFirestoreDocument } from '../hooks/useFirestoreDocument';
 
+// Move ClassCard OUTSIDE the main component to prevent recreation on every render
+const ClassCard = React.memo(({ day, classInfo, index, timeSlots, onClassChange, onRemoveClass }) => (
+    <div className="bg-gray-50 rounded-xl p-4 space-y-3 border border-gray-100">
+        {/* Time Selection */}
+        <div className="space-y-2">
+            <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
+                <IoTimeOutline className="w-4 h-4 text-blue-500" />
+                Time Period
+            </label>
+            <select
+                value={classInfo.time || ''}
+                onChange={(e) => onClassChange(day, index, 'time', e.target.value)}
+                className="w-full p-3 border border-gray-200 rounded-xl bg-white focus:ring-2 focus:ring-blue-300 focus:border-transparent transition-all duration-200"
+            >
+                <option value="">Select time period...</option>
+                {timeSlots.map(time => (
+                    <option key={time} value={time}>{time}</option>
+                ))}
+            </select>
+        </div>
+
+        {/* Subject Input */}
+        <div className="space-y-2">
+            <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
+                <IoBookOutline className="w-4 h-4 text-purple-500" />
+                Subject
+            </label>
+            <input 
+                type="text" 
+                placeholder="Enter subject name..." 
+                value={classInfo.subject || ''} 
+                onChange={(e) => onClassChange(day, index, 'subject', e.target.value)}
+                className="w-full p-3 border border-gray-200 rounded-xl bg-white focus:ring-2 focus:ring-purple-300 focus:border-transparent transition-all duration-200"
+            />
+        </div>
+
+        {/* Teacher Input */}
+        <div className="space-y-2">
+            <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
+                <IoPersonOutline className="w-4 h-4 text-green-500" />
+                Instructor
+            </label>
+            <input 
+                type="text" 
+                placeholder="Enter teacher name..." 
+                value={classInfo.teacher || ''} 
+                onChange={(e) => onClassChange(day, index, 'teacher', e.target.value)}
+                className="w-full p-3 border border-gray-200 rounded-xl bg-white focus:ring-2 focus:ring-green-300 focus:border-transparent transition-all duration-200"
+            />
+        </div>
+
+        {/* Remove Button */}
+        <button 
+            onClick={() => onRemoveClass(day, index)}
+            className="w-full bg-gradient-to-r from-red-500 to-red-600 text-white p-3 rounded-xl font-medium hover:from-red-600 hover:to-red-700 transition-all duration-200 active:scale-95 flex items-center justify-center gap-2"
+        >
+            <IoTrashOutline className="w-4 h-4" />
+            Remove Class
+        </button>
+    </div>
+));
+
+// Add display name for debugging
+ClassCard.displayName = 'ClassCard';
+
 const ScheduleEditor = () => {
     const { data: scheduleDoc, loading: scheduleLoading, updateDocument: updateSchedule } = useFirestoreDocument(['schedules', 'first_year']);
     const { data: timeSlotsDoc, loading: timeSlotsLoading } = useFirestoreDocument(['time_slots', 'default_periods']);
@@ -25,7 +90,7 @@ const ScheduleEditor = () => {
     const [expandedDays, setExpandedDays] = useState({});
     
     const navigate = useNavigate();
-    const daysOfWeek = ["Saturday", "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
+    const daysOfWeek = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday"];
     const loading = scheduleLoading || timeSlotsLoading;
     const timeSlots = timeSlotsDoc?.periods || [];
 
@@ -43,35 +108,50 @@ const ScheduleEditor = () => {
         }
     }, [scheduleDoc]);
 
-    const handleClassChange = (day, index, field, value) => {
-        const newEditorDays = { ...editorDays };
-        if (!newEditorDays[day]) newEditorDays[day] = [];
-        newEditorDays[day][index][field] = value;
-        setEditorDays(newEditorDays);
+    // Use useCallback to memoize the handler functions
+    const handleClassChange = useCallback((day, index, field, value) => {
+        setEditorDays(prev => {
+            const newEditorDays = { ...prev };
+            if (!newEditorDays[day]) newEditorDays[day] = [];
+            
+            // Create a new array and object to ensure immutability
+            newEditorDays[day] = [...newEditorDays[day]];
+            newEditorDays[day][index] = { ...newEditorDays[day][index], [field]: value };
+            
+            return newEditorDays;
+        });
         setSaveStatus(null); // Clear save status when editing
-    };
+    }, []);
 
-    const addClass = (day) => {
-        const newEditorDays = { ...editorDays };
-        if (!newEditorDays[day]) newEditorDays[day] = [];
-        newEditorDays[day].push({ time: '', subject: '', teacher: '' });
-        setEditorDays(newEditorDays);
+    const addClass = useCallback((day) => {
+        setEditorDays(prev => {
+            const newEditorDays = { ...prev };
+            if (!newEditorDays[day]) newEditorDays[day] = [];
+            newEditorDays[day] = [...newEditorDays[day], { time: '', subject: '', teacher: '' }];
+            return newEditorDays;
+        });
         setExpandedDays(prev => ({ ...prev, [day]: true }));
-    };
+    }, []);
 
-    const removeClass = (day, index) => {
-        const newEditorDays = { ...editorDays };
-        if (!newEditorDays[day]) return;
-        newEditorDays[day].splice(index, 1);
-        if (newEditorDays[day].length === 0) {
-            setExpandedDays(prev => ({ ...prev, [day]: false }));
-        }
-        setEditorDays(newEditorDays);
-    };
+    const removeClass = useCallback((day, index) => {
+        setEditorDays(prev => {
+            const newEditorDays = { ...prev };
+            if (!newEditorDays[day]) return prev;
+            
+            newEditorDays[day] = [...newEditorDays[day]];
+            newEditorDays[day].splice(index, 1);
+            
+            if (newEditorDays[day].length === 0) {
+                setExpandedDays(prevExpanded => ({ ...prevExpanded, [day]: false }));
+            }
+            
+            return newEditorDays;
+        });
+    }, []);
 
-    const toggleDay = (day) => {
+    const toggleDay = useCallback((day) => {
         setExpandedDays(prev => ({ ...prev, [day]: !prev[day] }));
-    };
+    }, []);
 
     const handleSave = async () => {
         setIsSaving(true);
@@ -89,7 +169,7 @@ const ScheduleEditor = () => {
         }
     };
 
-    const getDayColor = (index) => {
+    const getDayColor = useCallback((index) => {
         const colors = [
             'from-red-400 to-red-500',
             'from-orange-400 to-orange-500', 
@@ -100,11 +180,11 @@ const ScheduleEditor = () => {
             'from-purple-400 to-purple-500'
         ];
         return colors[index % colors.length];
-    };
+    }, []);
 
-    const getClassCount = (day) => {
+    const getClassCount = useCallback((day) => {
         return editorDays[day]?.length || 0;
-    };
+    }, [editorDays]);
 
     const MobileEditorSkeleton = () => (
         <div className="space-y-4 animate-pulse">
@@ -136,67 +216,6 @@ const ScheduleEditor = () => {
                     </div>
                 </div>
             ))}
-        </div>
-    );
-
-    const ClassCard = ({ day, classInfo, index }) => (
-        <div className="bg-gray-50 rounded-xl p-4 space-y-3 border border-gray-100">
-            {/* Time Selection */}
-            <div className="space-y-2">
-                <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
-                    <IoTimeOutline className="w-4 h-4 text-blue-500" />
-                    Time Period
-                </label>
-                <select
-                    value={classInfo.time}
-                    onChange={(e) => handleClassChange(day, index, 'time', e.target.value)}
-                    className="w-full p-3 border border-gray-200 rounded-xl bg-white focus:ring-2 focus:ring-blue-300 focus:border-transparent transition-all duration-200"
-                >
-                    <option value="">Select time period...</option>
-                    {timeSlots.map(time => (
-                        <option key={time} value={time}>{time}</option>
-                    ))}
-                </select>
-            </div>
-
-            {/* Subject Input */}
-            <div className="space-y-2">
-                <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
-                    <IoBookOutline className="w-4 h-4 text-purple-500" />
-                    Subject
-                </label>
-                <input 
-                    type="text" 
-                    placeholder="Enter subject name..." 
-                    value={classInfo.subject} 
-                    onChange={(e) => handleClassChange(day, index, 'subject', e.target.value)}
-                    className="w-full p-3 border border-gray-200 rounded-xl bg-white focus:ring-2 focus:ring-purple-300 focus:border-transparent transition-all duration-200"
-                />
-            </div>
-
-            {/* Teacher Input */}
-            <div className="space-y-2">
-                <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
-                    <IoPersonOutline className="w-4 h-4 text-green-500" />
-                    Instructor
-                </label>
-                <input 
-                    type="text" 
-                    placeholder="Enter teacher name..." 
-                    value={classInfo.teacher} 
-                    onChange={(e) => handleClassChange(day, index, 'teacher', e.target.value)}
-                    className="w-full p-3 border border-gray-200 rounded-xl bg-white focus:ring-2 focus:ring-green-300 focus:border-transparent transition-all duration-200"
-                />
-            </div>
-
-            {/* Remove Button */}
-            <button 
-                onClick={() => removeClass(day, index)}
-                className="w-full bg-gradient-to-r from-red-500 to-red-600 text-white p-3 rounded-xl font-medium hover:from-red-600 hover:to-red-700 transition-all duration-200 active:scale-95 flex items-center justify-center gap-2"
-            >
-                <IoTrashOutline className="w-4 h-4" />
-                Remove Class
-            </button>
         </div>
     );
 
@@ -300,10 +319,13 @@ const ScheduleEditor = () => {
                                 <div className="px-4 pb-4 space-y-4 border-t border-gray-100">
                                     {(editorDays[day] || []).map((classInfo, index) => (
                                         <ClassCard 
-                                            key={index}
+                                            key={`${day}-${index}`} // More stable key
                                             day={day}
                                             classInfo={classInfo}
                                             index={index}
+                                            timeSlots={timeSlots}
+                                            onClassChange={handleClassChange}
+                                            onRemoveClass={removeClass}
                                         />
                                     ))}
                                     

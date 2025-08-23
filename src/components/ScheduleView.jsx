@@ -4,7 +4,7 @@ import { IoBookOutline, IoPersonOutline, IoTimeOutline, IoCalendarOutline, IoSch
 
 const ScheduleView = ({ scheduleDays }) => {
   const [selectedClass, setSelectedClass] = useState(null);
-  const daysOfWeek = ["Saturday", "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
+  const daysOfWeek = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday"];
 
   const timeSlots = useMemo(() => {
     if (!scheduleDays) return [];
@@ -120,7 +120,7 @@ const ScheduleView = ({ scheduleDays }) => {
   );
 
   const getDayColor = (index) => {
-    const colors = ['bg-red-500', 'bg-orange-500', 'bg-yellow-500', 'bg-green-500', 'bg-blue-500', 'bg-indigo-500', 'bg-purple-500'];
+    const colors = ['bg-orange-500', 'bg-yellow-500', 'bg-green-500', 'bg-blue-500', 'bg-indigo-500'];
     return colors[index % colors.length];
   };
 
