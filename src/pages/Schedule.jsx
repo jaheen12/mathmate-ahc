@@ -2,13 +2,13 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
 import Skeleton from 'react-loading-skeleton';
-import { IoCreateOutline, IoTimeOutline, IoCalendarOutline, IoStatsChartOutline, IoSettingsOutline } from "react-icons/io5";
+import { IoCreateOutline, IoTimeOutline, IoCalendarOutline, IoStatsChartOutline } from "react-icons/io5"; 
 import { useFirestoreDocument } from '../hooks/useFirestoreDocument';
 import ScheduleView from '../components/ScheduleView';
 import TimeSlotsEditorModal from '../components/TimeSlotsEditorModal';
 
 // Move MobileActionButton outside to prevent re-creation
-const MobileActionButton = React.memo(({ onClick, to, icon: Icon, children, variant = 'secondary', fullWidth = false }) => {
+const MobileActionButton = React.memo(({ onClick, to, icon: IconComponent, children, variant = 'secondary', fullWidth = false }) => {
     const baseClasses = `group relative inline-flex items-center justify-center font-semibold transition-all duration-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-offset-1 active:scale-95 ${fullWidth ? 'w-full' : ''}`;
     
     const variants = {
@@ -22,7 +22,7 @@ const MobileActionButton = React.memo(({ onClick, to, icon: Icon, children, vari
 
     const content = (
         <>
-            <Icon className={`${variant === 'compact' ? 'w-4 h-4' : 'w-5 h-5'} ${children ? 'mr-2' : ''} transition-transform group-hover:scale-110`} />
+            <IconComponent className={`${variant === 'compact' ? 'w-4 h-4' : 'w-5 h-5'} ${children ? 'mr-2' : ''} transition-transform group-hover:scale-110`} />
             {children && <span className="relative font-medium">{children}</span>}
         </>
     );
@@ -107,8 +107,9 @@ const Schedule = ({ setHeaderTitle }) => {
     const { currentUser } = useAuth();
     const [isModalOpen, setIsModalOpen] = useState(false);
 
-    const scheduleDays = scheduleDoc?.days || {};
-    const timeSlots = timeSlotsDoc?.periods || [];
+    // Memoize scheduleDays and timeSlots to prevent dependency array changes
+    const scheduleDays = useMemo(() => scheduleDoc?.days || {}, [scheduleDoc]);
+    const timeSlots = useMemo(() => timeSlotsDoc?.periods || [], [timeSlotsDoc]);
     const loading = scheduleLoading || timeSlotsLoading;
 
     // Memoize calculations for better performance

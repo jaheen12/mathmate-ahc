@@ -49,7 +49,8 @@ const NoticeCard = ({ notice, onDelete, onEdit }) => {
             setIsDeleting(true);
             try {
                 await onDelete(notice.id);
-            } catch (_error) {
+            } catch (error) {
+                console.error("Error deleting notice:", error);
                 setIsDeleting(false);
             }
         }

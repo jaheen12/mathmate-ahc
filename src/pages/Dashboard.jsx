@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { db } from '../firebaseConfig';
 import { doc, getDoc, collection, getDocs, query, orderBy, limit } from 'firebase/firestore';
@@ -12,7 +12,6 @@ import {
     IoStatsChartOutline,
     IoSchoolOutline,
     IoTrophyOutline,
-    IoBookOutline,
     IoNotificationsOutline,
     IoRefreshOutline
 } from "react-icons/io5";
@@ -20,7 +19,6 @@ import AttendanceChart from '../components/AttendanceChart';
 import useLocalStorage from '../hooks/useLocalStorage';
 
 const Dashboard = ({ setHeaderTitle }) => {
-    const [schedule, setSchedule] = useState(null);
     const [upcomingClasses, setUpcomingClasses] = useState([]);
     const [upcomingDay, setUpcomingDay] = useState('');
     const [latestNotice, setLatestNotice] = useState(null);
@@ -72,7 +70,7 @@ const Dashboard = ({ setHeaderTitle }) => {
         }
     };
 
-    const fetchRemoteData = async (showRefreshing = false) => {
+    const fetchRemoteData = useCallback(async (showRefreshing = false) => {
         if (showRefreshing) setRefreshing(true);
         else setLoading(true);
         
@@ -81,7 +79,6 @@ const Dashboard = ({ setHeaderTitle }) => {
             const scheduleSnap = await getDoc(scheduleDocRef);
             if (scheduleSnap.exists()) {
                 const scheduleData = scheduleSnap.data();
-                setSchedule(scheduleData);
                 getUpcomingClasses(scheduleData);
             }
 
@@ -98,11 +95,11 @@ const Dashboard = ({ setHeaderTitle }) => {
             if (showRefreshing) setRefreshing(false);
             else setLoading(false);
         }
-    };
+    }, []);
 
     useEffect(() => {
         fetchRemoteData();
-    }, []);
+    }, [fetchRemoteData]);
 
     const handleRefresh = () => {
         fetchRemoteData(true);
@@ -152,10 +149,10 @@ const Dashboard = ({ setHeaderTitle }) => {
         </div>
     );
 
-    const EmptyState = ({ icon: Icon, title, description, action }) => (
+    const EmptyState = ({ icon: IconComponent, title, description, action }) => (
         <div className="flex flex-col items-center justify-center py-8 text-center">
             <div className="bg-gray-100 p-4 rounded-full mb-4">
-                <Icon size={32} className="text-gray-400" />
+                <IconComponent size={32} className="text-gray-400" />
             </div>
             <h3 className="text-lg font-medium text-gray-900 mb-2">{title}</h3>
             <p className="text-gray-500 text-sm mb-4">{description}</p>

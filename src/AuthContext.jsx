@@ -4,11 +4,13 @@ import { auth } from './firebaseConfig'; // Make sure this path is correct
 
 const AuthContext = React.createContext();
 
+// Export the useAuth hook as a named export
 export function useAuth() {
     return useContext(AuthContext);
 }
 
-export function AuthProvider({ children }) {
+// Move AuthProvider to be the default export to fix fast refresh issue
+function AuthProvider({ children }) {
     const [currentUser, setCurrentUser] = useState(null);
     // Ignore the unused 'loading' variable by prefixing it with an underscore.
     const [_loading, setLoading] = useState(true);
@@ -37,3 +39,7 @@ export function AuthProvider({ children }) {
         </AuthContext.Provider>
     );
 }
+
+// Export AuthProvider as both named and default export for flexibility
+export { AuthProvider };
+export default AuthProvider;

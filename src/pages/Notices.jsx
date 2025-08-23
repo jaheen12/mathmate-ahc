@@ -84,6 +84,7 @@ const Notices = ({ setHeaderTitle }) => {
                 await updateDoc(noticeDoc, { title, content });
                 toast.success("Notice updated successfully!");
             } catch (error) {
+                console.error("Error updating notice: ", error);
                 toast.error("Failed to update notice.");
             }
         } else {
@@ -96,6 +97,7 @@ const Notices = ({ setHeaderTitle }) => {
                 });
                 toast.success("Notice added successfully!");
             } catch (error) {
+                console.error("Error adding notice: ", error);
                 toast.error("Failed to add new notice.");
             }
         }
@@ -107,6 +109,7 @@ const Notices = ({ setHeaderTitle }) => {
                 await deleteDoc(doc(db, "notices", id));
                 toast.success("Notice deleted successfully!");
             } catch (error) {
+                console.error("Error deleting notice: ", error);
                 toast.error("Failed to delete notice.");
             }
         }

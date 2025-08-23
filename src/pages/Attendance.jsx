@@ -223,7 +223,7 @@ const Attendance = ({ setHeaderTitle }) => {
                 
                 toast.success(`Attendance for ${selectedDate} saved locally!`);
                 setHasUnsavedChanges(false);
-            } catch (_error) {
+            } catch (error) {
                 console.error("Error saving attendance to local storage: ", error);
                 toast.error("Failed to save changes.");
             }
@@ -242,7 +242,8 @@ const Attendance = ({ setHeaderTitle }) => {
             link.click();
             URL.revokeObjectURL(url);
             toast.success('Attendance data exported successfully!');
-        } catch (_error) {
+        } catch (error) {
+            console.error('Export error:', error);
             toast.error('Failed to export data.');
         }
     }, [allRecords]);

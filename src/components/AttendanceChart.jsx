@@ -102,17 +102,20 @@ const AttendanceChart = ({ attendanceData = [] }) => {
 
     // Enhanced status determination
     const getAttendanceStatus = (percentage) => {
-        if (percentage >= 90) return { status: 'Outstanding', color: 'text-emerald-600', bgColor: 'bg-emerald-50', icon: TrendingUp };
-        if (percentage >= 85) return { status: 'Excellent', color: 'text-green-600', bgColor: 'bg-green-50', icon: TrendingUp };
-        if (percentage >= 75) return { status: 'Good', color: 'text-blue-600', bgColor: 'bg-blue-50', icon: Users };
-        if (percentage >= 60) return { status: 'Warning', color: 'text-yellow-600', bgColor: 'bg-yellow-50', icon: TrendingDown };
-        return { status: 'Critical', color: 'text-red-600', bgColor: 'bg-red-50', icon: TrendingDown };
+        if (percentage >= 90) return { status: 'Outstanding', color: 'text-emerald-600', bgColor: 'bg-emerald-50' };
+        if (percentage >= 85) return { status: 'Excellent', color: 'text-green-600', bgColor: 'bg-green-50' };
+        if (percentage >= 75) return { status: 'Good', color: 'text-blue-600', bgColor: 'bg-blue-50' };
+        if (percentage >= 60) return { status: 'Warning', color: 'text-yellow-600', bgColor: 'bg-yellow-50' };
+        return { status: 'Critical', color: 'text-red-600', bgColor: 'bg-red-50' };
     };
 
     const overallStatus = getAttendanceStatus(overall);
-    const StatusIcon = overallStatus.icon;
-
-    
+    const getStatusIcon = (percentage) => {
+        if (percentage >= 75) return TrendingUp;
+        if (percentage >= 60) return Users;
+        return TrendingDown;
+    };
+    const StatusIcon = getStatusIcon(overall);
 
     // View mode options
     const viewModeOptions = [
@@ -300,7 +303,7 @@ const AttendanceChart = ({ attendanceData = [] }) => {
                             </div>
                         </div>
                         <div className="flex items-center space-x-1 self-start sm:self-auto">
-                            {viewModeOptions.map(({ key, icon: Icon, title }) => (
+                            {viewModeOptions.map(({ key, icon: ViewIcon, title }) => (
                                 <button
                                     key={key}
                                     onClick={() => setViewMode(key)}
@@ -311,7 +314,7 @@ const AttendanceChart = ({ attendanceData = [] }) => {
                                     }`}
                                     title={title}
                                 >
-                                    <Icon className="w-4 h-4" />
+                                    <ViewIcon className="w-4 h-4" />
                                 </button>
                             ))}
                         </div>

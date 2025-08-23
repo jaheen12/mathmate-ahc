@@ -14,6 +14,7 @@ import {
     IoWarningOutline
 } from "react-icons/io5";
 import { useFirestoreDocument } from '../hooks/useFirestoreDocument';
+import { toast } from 'react-toastify'; // ✅ Fixed missing import
 
 // Move ClassCard OUTSIDE the main component to prevent recreation on every render
 const ClassCard = React.memo(({ day, classInfo, index, timeSlots, onClassChange, onRemoveClass }) => (
@@ -77,7 +78,6 @@ const ClassCard = React.memo(({ day, classInfo, index, timeSlots, onClassChange,
     </div>
 ));
 
-// Add display name for debugging
 ClassCard.displayName = 'ClassCard';
 
 const ScheduleEditor = () => {
@@ -97,7 +97,6 @@ const ScheduleEditor = () => {
     useEffect(() => {
         if (scheduleDoc) {
             setEditorDays(scheduleDoc.days || {});
-            // Auto-expand days with classes
             const expanded = {};
             Object.keys(scheduleDoc.days || {}).forEach(day => {
                 if (scheduleDoc.days[day]?.length > 0) {
@@ -108,19 +107,15 @@ const ScheduleEditor = () => {
         }
     }, [scheduleDoc]);
 
-    // Use useCallback to memoize the handler functions
     const handleClassChange = useCallback((day, index, field, value) => {
         setEditorDays(prev => {
             const newEditorDays = { ...prev };
             if (!newEditorDays[day]) newEditorDays[day] = [];
-            
-            // Create a new array and object to ensure immutability
             newEditorDays[day] = [...newEditorDays[day]];
             newEditorDays[day][index] = { ...newEditorDays[day][index], [field]: value };
-            
             return newEditorDays;
         });
-        setSaveStatus(null); // Clear save status when editing
+        setSaveStatus(null);
     }, []);
 
     const addClass = useCallback((day) => {
@@ -137,14 +132,11 @@ const ScheduleEditor = () => {
         setEditorDays(prev => {
             const newEditorDays = { ...prev };
             if (!newEditorDays[day]) return prev;
-            
             newEditorDays[day] = [...newEditorDays[day]];
             newEditorDays[day].splice(index, 1);
-            
             if (newEditorDays[day].length === 0) {
                 setExpandedDays(prevExpanded => ({ ...prevExpanded, [day]: false }));
             }
-            
             return newEditorDays;
         });
     }, []);
@@ -162,11 +154,12 @@ const ScheduleEditor = () => {
             setTimeout(() => {
                 navigate('/schedule');
             }, 1500);
-        } catch (_error) {
-    console.error("Error saving schedule: ", _error); // <-- Corrected line
-    toast.error("Failed to save schedule.");
-    setIsSaving(false);
-}
+        } catch (error) {
+            console.error("Error saving schedule: ", error);
+            toast.error("Failed to save schedule."); // ✅ toast now works
+            setIsSaving(false);
+            setSaveStatus('error');
+        }
     };
 
     const getDayColor = useCallback((index) => {
@@ -188,7 +181,6 @@ const ScheduleEditor = () => {
 
     const MobileEditorSkeleton = () => (
         <div className="space-y-4 animate-pulse">
-            {/* Header skeleton */}
             <div className="bg-white rounded-2xl p-4">
                 <div className="flex items-center justify-between mb-4">
                     <div className="w-8 h-8 bg-gray-200 rounded-full"></div>
@@ -196,8 +188,6 @@ const ScheduleEditor = () => {
                     <div className="w-20 h-8 bg-gray-200 rounded-lg"></div>
                 </div>
             </div>
-            
-            {/* Day cards skeleton */}
             {[1, 2, 3].map((item) => (
                 <div key={item} className="bg-white rounded-2xl p-4">
                     <div className="flex items-center justify-between mb-4">
@@ -221,7 +211,7 @@ const ScheduleEditor = () => {
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50/20 px-4 py-2">
-            {/* Mobile Header */}
+            {/* Header */}
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 mb-6">
                 <div className="flex items-center justify-between">
                     <Link 
@@ -230,12 +220,10 @@ const ScheduleEditor = () => {
                     >
                         <IoArrowBack className="w-5 h-5 text-gray-600" />
                     </Link>
-                    
                     <div className="text-center">
                         <h1 className="text-xl font-bold text-gray-900">Edit Schedule</h1>
                         <p className="text-sm text-gray-600">Manage your class timetable</p>
                     </div>
-                    
                     <button 
                         onClick={handleSave}
                         disabled={isSaving}
@@ -258,8 +246,6 @@ const ScheduleEditor = () => {
                         )}
                     </button>
                 </div>
-
-                {/* Save Status */}
                 {saveStatus && (
                     <div className={`mt-3 p-3 rounded-xl flex items-center gap-2 ${
                         saveStatus === 'success' 
@@ -285,7 +271,6 @@ const ScheduleEditor = () => {
                 <div className="space-y-4 pb-6">
                     {daysOfWeek.map((day, dayIndex) => (
                         <div key={day} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-                            {/* Day Header */}
                             <button
                                 onClick={() => toggleDay(day)}
                                 className="w-full p-4 flex items-center justify-between hover:bg-gray-50 transition-colors"
@@ -299,7 +284,6 @@ const ScheduleEditor = () => {
                                         </p>
                                     </div>
                                 </div>
-                                
                                 <div className="flex items-center gap-2">
                                     {getClassCount(day) > 0 && (
                                         <div className="px-2 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-medium">
@@ -307,19 +291,15 @@ const ScheduleEditor = () => {
                                         </div>
                                     )}
                                     <IoCalendarOutline 
-                                        className={`w-5 h-5 text-gray-400 transition-transform duration-200 ${
-                                            expandedDays[day] ? 'rotate-180' : ''
-                                        }`} 
+                                        className={`w-5 h-5 text-gray-400 transition-transform duration-200 ${expandedDays[day] ? 'rotate-180' : ''}`} 
                                     />
                                 </div>
                             </button>
-
-                            {/* Day Content */}
                             {expandedDays[day] && (
                                 <div className="px-4 pb-4 space-y-4 border-t border-gray-100">
                                     {(editorDays[day] || []).map((classInfo, index) => (
                                         <ClassCard 
-                                            key={`${day}-${index}`} // More stable key
+                                            key={`${day}-${index}`}
                                             day={day}
                                             classInfo={classInfo}
                                             index={index}
@@ -328,8 +308,6 @@ const ScheduleEditor = () => {
                                             onRemoveClass={removeClass}
                                         />
                                     ))}
-                                    
-                                    {/* Add Class Button */}
                                     <button 
                                         onClick={() => addClass(day)}
                                         className="w-full bg-gradient-to-r from-blue-500 to-blue-600 text-white p-4 rounded-xl font-medium hover:from-blue-600 hover:to-blue-700 transition-all duration-200 active:scale-95 flex items-center justify-center gap-2"
@@ -341,8 +319,6 @@ const ScheduleEditor = () => {
                             )}
                         </div>
                     ))}
-
-                    {/* Quick Stats */}
                     <div className="bg-gradient-to-r from-blue-50 to-purple-50 border border-blue-200 rounded-2xl p-4">
                         <div className="flex items-center justify-between">
                             <div>

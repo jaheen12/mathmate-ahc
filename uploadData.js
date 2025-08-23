@@ -1,7 +1,6 @@
 /* eslint-env node */
 // uploadData.js
 
-
 import { doc, writeBatch } from 'firebase/firestore';
 import { db } from './src/firebaseConfig.js';
 import { schedule, resources, courses, tasks, officialNotes } from './src/data/masterData.js';
@@ -14,9 +13,9 @@ async function uploadAllData() {
     // --- COLLECTIONS WITH A SINGLE DOCUMENT ---
     console.log('Uploading single-document collections...');
     const singleDocs = {
-      'schedule': { id: 'main-schedule', data: schedule },
-      'courses': { id: 'main-list', data: { list: courses } },
-      'tasks': { id: 'main-list', data: { list: tasks } },
+      schedule: { id: 'main-schedule', data: schedule },
+      courses: { id: 'main-list', data: { list: courses } },
+      tasks: { id: 'main-list', data: { list: tasks } },
     };
     for (const collName in singleDocs) {
       const { id, data } = singleDocs[collName];
@@ -28,8 +27,8 @@ async function uploadAllData() {
     // --- COLLECTIONS WITH MULTIPLE DOCUMENTS (like our hierarchies) ---
     console.log('Uploading multi-document collections...');
     const multiDocs = {
-      'resources': resources,
-      'official_notes': officialNotes,
+      resources: resources,
+      official_notes: officialNotes,
     };
     for (const collName in multiDocs) {
       const dataObject = multiDocs[collName];
@@ -44,7 +43,6 @@ async function uploadAllData() {
     // Commit all changes
     await batch.commit();
     console.log('\n🎉 All data has been successfully uploaded to Firestore!');
-
   } catch (error) {
     console.error('❌ Error uploading data:', error);
     process.exit(1);
