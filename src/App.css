@@ -1,10 +1,15 @@
+/* src/App.css */
+
+/* Reset root container to always fill screen */
 #root {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 2rem;
-  text-align: center;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  text-align: left; /* don’t force center everywhere */
 }
 
+/* Optional: Keep the Vite logo spin demo removed, not needed for production */
 .logo {
   height: 6em;
   padding: 1.5em;
