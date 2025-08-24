@@ -3,7 +3,6 @@ apply plugin: 'com.android.application'
 import java.util.Properties
 import java.io.FileInputStream
 
-// ✅ Load keystore.properties
 def keystorePropertiesFile = rootProject.file('keystore.properties')
 def keystoreProperties = new Properties()
 if (keystorePropertiesFile.exists()) {
@@ -12,12 +11,14 @@ if (keystorePropertiesFile.exists()) {
 
 android {
     namespace "com.jaheen12.mathmateahc"
-    compileSdkVersion rootProject.ext.compileSdkVersion
+
+    // ✅ Updated compileSdkVersion
+    compileSdkVersion 34
 
     defaultConfig {
         applicationId "com.jaheen12.mathmateahc"
         minSdkVersion rootProject.ext.minSdkVersion
-        targetSdkVersion rootProject.ext.targetSdkVersion
+        targetSdkVersion 34  // updated
         versionCode 1
         versionName "1.0"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"

@@ -1,13 +1,15 @@
 // Top-level build file where you can add configuration options common to all sub-projects/modules.
 
 buildscript {
-    
     repositories {
         google()
         mavenCentral()
     }
     dependencies {
-        classpath 'com.android.tools.build:gradle:8.0.0'
+        // ✅ Updated AGP to 8.1.1 to support compileSdkVersion 34
+        classpath 'com.android.tools.build:gradle:8.1.1'
+
+        // Google services
         classpath 'com.google.gms:google-services:4.3.15'
 
         // NOTE: Do not place your application dependencies here; they belong
@@ -15,6 +17,7 @@ buildscript {
     }
 }
 
+// Optional variables file if you are using it
 apply from: "variables.gradle"
 
 allprojects {
@@ -24,6 +27,7 @@ allprojects {
     }
 }
 
+// Clean task
 task clean(type: Delete) {
     delete rootProject.buildDir
 }
