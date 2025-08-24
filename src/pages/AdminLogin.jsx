@@ -1,7 +1,5 @@
 import React, { useState } from 'react';
 import { Eye, EyeOff, Mail, Lock, Shield, AlertCircle } from 'lucide-react';
-
-// IMPORTANT: Uncomment these imports in your actual project:
 import { useNavigate } from 'react-router-dom';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import { auth } from '../firebaseConfig';
@@ -13,8 +11,7 @@ function AdminLogin() {
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [focusedField, setFocusedField] = useState('');
-  
-  // IMPORTANT: Uncomment this in your actual project:
+
   const navigate = useNavigate();
 
   const handleLogin = async (e) => {
@@ -23,32 +20,10 @@ function AdminLogin() {
     setIsLoading(true);
 
     try {
-      // REPLACE THIS DEMO CODE WITH YOUR ACTUAL FIREBASE AUTH:
       await signInWithEmailAndPassword(auth, email, password);
-navigate('/');
-      
-      
-     
-      
-      // Handle Firebase auth errors (uncomment for real implementation):
-      /*
-      if (error.code === 'auth/invalid-credential' || 
-          error.code === 'auth/user-not-found' || 
-          error.code === 'auth/wrong-password') {
-        setError('Invalid email or password. Please try again.');
-      } else if (error.code === 'auth/too-many-requests') {
-        setError('Too many failed attempts. Please try again later.');
-      } else {
-        setError('An unexpected error occurred. Please try again later.');
-      }
-      */
-      
-      // Demo error handling - REMOVE THIS in your actual project:
-      if (error.message.includes('Demo:')) {
-        setError('Demo mode: Use admin@demo.com with password demo123');
-      } else {
-        setError(error.message || 'Login failed. Please try again.');
-      }
+      navigate('/');
+    } catch (err) {
+      setError(err.message || 'Login failed. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -60,16 +35,13 @@ navigate('/');
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center p-4">
-      {/* Background decorations */}
       <div className="absolute inset-0 overflow-hidden">
         <div className="absolute -top-40 -right-40 w-80 h-80 bg-purple-500 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-pulse"></div>
         <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-blue-500 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-pulse delay-1000"></div>
       </div>
-      
+
       <div className="relative w-full max-w-md">
-        {/* Glass morphism card */}
         <div className="bg-white/10 backdrop-blur-lg border border-white/20 rounded-2xl shadow-2xl p-8 space-y-6">
-          {/* Header */}
           <div className="text-center space-y-2">
             <div className="mx-auto w-16 h-16 bg-gradient-to-r from-purple-500 to-blue-500 rounded-full flex items-center justify-center mb-4">
               <Shield className="w-8 h-8 text-white" />
@@ -78,14 +50,12 @@ navigate('/');
             <p className="text-gray-300">Sign in to access the dashboard</p>
           </div>
 
-          {/* Demo Instructions */}
           <div className="mb-4 p-3 bg-blue-500/20 border border-blue-500/30 rounded-lg text-blue-200 text-sm">
             <p className="font-semibold mb-1">Demo Mode Active</p>
             <p>Email: admin@demo.com</p>
             <p>Password: demo123</p>
           </div>
 
-          {/* Error Alert */}
           {error && (
             <div className="flex items-center space-x-3 bg-red-500/20 border border-red-500/30 rounded-lg p-3 text-red-200 animate-in slide-in-from-top-1">
               <AlertCircle className="w-5 h-5 flex-shrink-0" />
@@ -93,22 +63,13 @@ navigate('/');
             </div>
           )}
 
-          {/* Login Form */}
           <form onSubmit={handleLogin} className="space-y-5">
-            {/* Email Field */}
             <div className="space-y-2">
-              <label 
-                htmlFor="email" 
-                className={`block text-sm font-medium transition-colors duration-200 ${
-                  focusedField === 'email' ? 'text-purple-300' : 'text-gray-300'
-                }`}
-              >
+              <label htmlFor="email" className={`block text-sm font-medium transition-colors duration-200 ${focusedField === 'email' ? 'text-purple-300' : 'text-gray-300'}`}>
                 Email Address
               </label>
               <div className="relative">
-                <Mail className={`absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 transition-colors duration-200 ${
-                  focusedField === 'email' ? 'text-purple-400' : 'text-gray-400'
-                }`} />
+                <Mail className={`absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 transition-colors duration-200 ${focusedField === 'email' ? 'text-purple-400' : 'text-gray-400'}`} />
                 <input
                   type="email"
                   id="email"
@@ -124,20 +85,12 @@ navigate('/');
               </div>
             </div>
 
-            {/* Password Field */}
             <div className="space-y-2">
-              <label 
-                htmlFor="password" 
-                className={`block text-sm font-medium transition-colors duration-200 ${
-                  focusedField === 'password' ? 'text-purple-300' : 'text-gray-300'
-                }`}
-              >
+              <label htmlFor="password" className={`block text-sm font-medium transition-colors duration-200 ${focusedField === 'password' ? 'text-purple-300' : 'text-gray-300'}`}>
                 Password
               </label>
               <div className="relative">
-                <Lock className={`absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 transition-colors duration-200 ${
-                  focusedField === 'password' ? 'text-purple-400' : 'text-gray-400'
-                }`} />
+                <Lock className={`absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 transition-colors duration-200 ${focusedField === 'password' ? 'text-purple-400' : 'text-gray-400'}`} />
                 <input
                   type={showPassword ? 'text' : 'password'}
                   id="password"
@@ -161,7 +114,6 @@ navigate('/');
               </div>
             </div>
 
-            {/* Submit Button */}
             <button
               type="submit"
               disabled={isLoading || !email || !password}
@@ -172,21 +124,15 @@ navigate('/');
                   <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
                   <span>Signing In...</span>
                 </div>
-              ) : (
-                'Sign In'
-              )}
+              ) : 'Sign In'}
             </button>
           </form>
 
-          {/* Footer */}
           <div className="text-center pt-4 border-t border-white/10">
-            <p className="text-sm text-gray-400">
-              Secure admin access • Protected by encryption
-            </p>
+            <p className="text-sm text-gray-400">Secure admin access • Protected by encryption</p>
           </div>
         </div>
 
-        {/* Additional security badge */}
         <div className="mt-4 text-center">
           <div className="inline-flex items-center space-x-2 text-xs text-gray-400 bg-white/5 backdrop-blur-sm rounded-full px-4 py-2 border border-white/10">
             <Shield className="w-3 h-3" />

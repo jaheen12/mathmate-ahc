@@ -1,0 +1,33 @@
+/* src/components/NetworkStatus.css */
+.network-status-container {
+  display: flex;
+  gap: 8px;
+  padding: 8px 12px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  border-radius: 8px;
+  background-color: #f0f0f0;
+  border: 1px solid #ddd;
+  margin-bottom: 1rem;
+}
+
+.status-pill {
+  padding: 4px 8px;
+  border-radius: 12px;
+  color: white;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.status-pill.offline {
+  background-color: #ef4444; /* red-500 */
+}
+
+.status-pill.cache {
+  background-color: #3b82f6; /* blue-500 */
+}
+
+.status-pill.syncing {
+  background-color: #f97316; /* orange-500 */
+}

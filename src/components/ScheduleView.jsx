@@ -1,46 +1,38 @@
 // src/components/ScheduleView.jsx
 import React, { useMemo, useState } from 'react';
-import { IoBookOutline, IoPersonOutline, IoTimeOutline, IoCalendarOutline, IoSchoolOutline, IoClose } from 'react-icons/io5';
+import { 
+  IoBookOutline, IoPersonOutline, IoTimeOutline, IoCalendarOutline, 
+  IoSchoolOutline, IoClose 
+} from 'react-icons/io5';
 
 const ScheduleView = ({ scheduleDays }) => {
   const [selectedClass, setSelectedClass] = useState(null);
   const daysOfWeek = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday"];
 
+  // Collect all unique time slots
   const timeSlots = useMemo(() => {
     if (!scheduleDays) return [];
     const allTimes = new Set();
     Object.values(scheduleDays).forEach(dayClasses => {
-      dayClasses.forEach(classInfo => {
-        allTimes.add(classInfo.time);
-      });
+      dayClasses.forEach(classInfo => allTimes.add(classInfo.time));
     });
     return Array.from(allTimes).sort();
   }, [scheduleDays]);
 
   const hasScheduleData = useMemo(() => {
-    return Object.values(scheduleDays).some(day => day.length > 0);
+    return Object.values(scheduleDays || {}).some(day => day.length > 0);
   }, [scheduleDays]);
 
-  // Generate colors for subjects
+  // Generate consistent colors for subjects
   const getSubjectColor = (subject) => {
     const colors = [
-      'from-blue-500 to-blue-600',
-      'from-purple-500 to-purple-600', 
-      'from-green-500 to-green-600',
-      'from-orange-500 to-orange-600',
-      'from-red-500 to-red-600',
-      'from-indigo-500 to-indigo-600',
-      'from-pink-500 to-pink-600',
-      'from-teal-500 to-teal-600',
-      'from-cyan-500 to-cyan-600',
-      'from-emerald-500 to-emerald-600',
+      'from-blue-500 to-blue-600', 'from-purple-500 to-purple-600', 
+      'from-green-500 to-green-600', 'from-orange-500 to-orange-600',
+      'from-red-500 to-red-600', 'from-indigo-500 to-indigo-600',
+      'from-pink-500 to-pink-600', 'from-teal-500 to-teal-600',
+      'from-cyan-500 to-cyan-600', 'from-emerald-500 to-emerald-600',
     ];
-    
-    const hash = subject.split('').reduce((a, b) => {
-      a = ((a << 5) - a) + b.charCodeAt(0);
-      return a & a;
-    }, 0);
-    
+    const hash = subject.split('').reduce((a, b) => ((a << 5) - a) + b.charCodeAt(0), 0);
     return colors[Math.abs(hash) % colors.length];
   };
 
@@ -70,14 +62,14 @@ const ScheduleView = ({ scheduleDays }) => {
     </div>
   );
 
-  if (!hasScheduleData) {
-    return <EmptyScheduleState />;
-  }
+  if (!hasScheduleData) return <EmptyScheduleState />;
 
   const ClassCard = ({ classInfo, day, time }) => {
     const colorClass = getSubjectColor(classInfo.subject);
-    const isSelected = selectedClass?.subject === classInfo.subject && selectedClass?.day === day && selectedClass?.time === time;
-    
+    const isSelected = selectedClass?.subject === classInfo.subject &&
+                       selectedClass?.day === day &&
+                       selectedClass?.time === time;
+
     return (
       <button 
         className={`
@@ -97,14 +89,11 @@ const ScheduleView = ({ scheduleDays }) => {
               {classInfo.teacher}
             </p>
           </div>
-          
           <div className="flex items-center justify-between text-xs opacity-80">
             <IoBookOutline className="w-3 h-3 flex-shrink-0" />
-            <span className="font-medium">{time.slice(0, 5)}</span>
+            <span className="font-medium">{time.slice(0,5)}</span>
           </div>
         </div>
-        
-        {/* Shine effect */}
         <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent opacity-0 hover:opacity-100 transition-opacity duration-500 rounded-xl transform -skew-x-12"></div>
       </button>
     );
@@ -126,7 +115,7 @@ const ScheduleView = ({ scheduleDays }) => {
 
   return (
     <div className="space-y-6">
-      {/* Mobile-Optimized Header */}
+      {/* Header */}
       <div className="flex items-center justify-between p-4 bg-white rounded-2xl shadow-sm border border-gray-100">
         <div className="flex items-center gap-3">
           <div className="p-3 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl shadow-md">
@@ -138,25 +127,21 @@ const ScheduleView = ({ scheduleDays }) => {
           </div>
         </div>
         <div className="text-right">
-          <div className="text-sm font-semibold text-gray-700">
-            {timeSlots.length} Periods
-          </div>
+          <div className="text-sm font-semibold text-gray-700">{timeSlots.length} Periods</div>
           <div className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full mt-1">
             {daysOfWeek.length} Days
           </div>
         </div>
       </div>
 
-      {/* Mobile-Optimized Schedule Table */}
+      {/* Schedule Table */}
       <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
-        {/* Horizontal scrollable container */}
         <div className="overflow-x-auto">
           <div className="min-w-max">
             {/* Table Header */}
             <div className="flex bg-gradient-to-r from-blue-600 to-purple-600 text-white">
               <div className="flex-shrink-0 w-32 p-4 border-r border-blue-400 font-bold flex items-center gap-2 bg-gradient-to-r from-blue-600 to-blue-700">
-                <IoCalendarOutline className="w-4 h-4" />
-                <span>Day</span>
+                <IoCalendarOutline className="w-4 h-4" /> Day
               </div>
               <div className="flex">
                 {timeSlots.map((time, index) => (
@@ -174,22 +159,16 @@ const ScheduleView = ({ scheduleDays }) => {
             <div className="max-h-96 overflow-y-auto">
               {daysOfWeek.map((day, dayIndex) => (
                 <div key={day} className={`flex border-b border-gray-200 hover:bg-blue-50/30 transition-all duration-200 ${dayIndex % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'}`}>
-                  <div className="flex-shrink-0 w-32 p-4 border-r border-gray-200 font-semibold text-gray-800 bg-gray-50/80">
-                    <div className="flex items-center gap-2">
-                      <div className={`w-3 h-3 rounded-full ${getDayColor(dayIndex)}`}></div>
-                      <span className="text-sm">{day}</span>
-                    </div>
+                  <div className="flex-shrink-0 w-32 p-4 border-r border-gray-200 font-semibold text-gray-800 bg-gray-50/80 flex items-center gap-2">
+                    <div className={`w-3 h-3 rounded-full ${getDayColor(dayIndex)}`}></div>
+                    <span className="text-sm">{day}</span>
                   </div>
                   <div className="flex">
                     {timeSlots.map((time, timeIndex) => {
                       const classInfo = (scheduleDays[day] || []).find(c => c.time === time);
                       return (
                         <div key={time} className={`flex-shrink-0 w-36 p-3 ${timeIndex < timeSlots.length - 1 ? 'border-r border-gray-100' : ''}`}>
-                          {classInfo ? (
-                            <ClassCard classInfo={classInfo} day={day} time={time} />
-                          ) : (
-                            <EmptySlot />
-                          )}
+                          {classInfo ? <ClassCard classInfo={classInfo} day={day} time={time} /> : <EmptySlot />}
                         </div>
                       );
                     })}
@@ -201,29 +180,23 @@ const ScheduleView = ({ scheduleDays }) => {
         </div>
       </div>
 
-      {/* Mobile Stats Cards */}
+      {/* Stats Cards */}
       <div className="grid grid-cols-3 gap-4">
         <div className="bg-gradient-to-br from-blue-50 to-blue-100 border border-blue-200 rounded-xl p-4 text-center">
-          <div className="text-2xl font-bold text-blue-700">
-            {Object.values(scheduleDays).flat().length}
-          </div>
+          <div className="text-2xl font-bold text-blue-700">{Object.values(scheduleDays).flat().length}</div>
           <div className="text-xs text-blue-600 font-medium">Total Classes</div>
         </div>
         <div className="bg-gradient-to-br from-purple-50 to-purple-100 border border-purple-200 rounded-xl p-4 text-center">
-          <div className="text-2xl font-bold text-purple-700">
-            {new Set(Object.values(scheduleDays).flat().map(c => c.subject)).size}
-          </div>
+          <div className="text-2xl font-bold text-purple-700">{new Set(Object.values(scheduleDays).flat().map(c => c.subject)).size}</div>
           <div className="text-xs text-purple-600 font-medium">Subjects</div>
         </div>
         <div className="bg-gradient-to-br from-green-50 to-green-100 border border-green-200 rounded-xl p-4 text-center">
-          <div className="text-2xl font-bold text-green-700">
-            {timeSlots.length * daysOfWeek.length}
-          </div>
+          <div className="text-2xl font-bold text-green-700">{timeSlots.length * daysOfWeek.length}</div>
           <div className="text-xs text-green-600 font-medium">Total Slots</div>
         </div>
       </div>
 
-      {/* Mobile Modal for Class Details */}
+      {/* Class Details Modal */}
       {selectedClass && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-end justify-center z-50">
           <div className="bg-white rounded-t-3xl w-full max-w-md p-6 transform transition-transform duration-300 animate-slide-up">
@@ -239,7 +212,6 @@ const ScheduleView = ({ scheduleDays }) => {
                 <IoClose className="w-5 h-5 text-gray-600" />
               </button>
             </div>
-
             <div className="space-y-4">
               <div className="flex items-center gap-3 p-3 bg-blue-50 rounded-xl">
                 <div className="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center">
@@ -250,17 +222,14 @@ const ScheduleView = ({ scheduleDays }) => {
                   <p className="text-gray-800 font-semibold">{selectedClass.teacher}</p>
                 </div>
               </div>
-
               <div className="flex items-center gap-3 p-3 bg-green-50 rounded-xl">
                 <div className="w-10 h-10 bg-green-100 rounded-xl flex items-center justify-center">
                   <IoTimeOutline className="w-5 h-5 text-green-600" />
                 </div>
                 <div>
                   <p className="text-xs text-green-600 font-medium">Time</p>
-                  <p className="text-gray-800 font-semibold">{selectedClass.time}</p>
-                </div>
+                  <p className="text-gray-800 font-semibold">{selectedClass.time}</p></div>
               </div>
-
               <div className="flex items-center gap-3 p-3 bg-purple-50 rounded-xl">
                 <div className="w-10 h-10 bg-purple-100 rounded-xl flex items-center justify-center">
                   <IoCalendarOutline className="w-5 h-5 text-purple-600" />
@@ -284,12 +253,8 @@ const ScheduleView = ({ scheduleDays }) => {
 
       <style jsx>{`
         @keyframes slide-up {
-          from {
-            transform: translateY(100%);
-          }
-          to {
-            transform: translateY(0);
-          }
+          from { transform: translateY(100%); }
+          to { transform: translateY(0); }
         }
         .animate-slide-up {
           animation: slide-up 0.3s ease-out;

@@ -9,89 +9,91 @@ import {
     IoTimeOutline,
     IoPersonOutline,
     IoBookOutline,
-    IoCalendarOutline,
-    IoCheckmarkCircleOutline,
-    IoWarningOutline
+    IoCalendarOutline
 } from "react-icons/io5";
 import { useFirestoreDocument } from '../hooks/useFirestoreDocument';
-import { toast } from 'react-toastify'; // ✅ Fixed missing import
+import NetworkStatus from '../components/NetworkStatus';
 
-// Move ClassCard OUTSIDE the main component to prevent recreation on every render
+// ---------------- CLASS CARD ----------------
 const ClassCard = React.memo(({ day, classInfo, index, timeSlots, onClassChange, onRemoveClass }) => (
-    <div className="bg-gray-50 rounded-xl p-4 space-y-3 border border-gray-100">
-        {/* Time Selection */}
-        <div className="space-y-2">
-            <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
-                <IoTimeOutline className="w-4 h-4 text-blue-500" />
-                Time Period
-            </label>
+    <div className="bg-white border border-gray-200 rounded-xl p-3 mb-3 shadow-sm hover:shadow-md transition-shadow">
+        <div className="flex items-center gap-2 mb-2">
+            <IoBookOutline className="text-blue-500 w-4 h-4" />
+            <input
+                type="text"
+                value={classInfo.subject || ""}
+                onChange={(e) =>
+                    onClassChange(day, index, { ...classInfo, subject: e.target.value })
+                }
+                placeholder="Subject"
+                className="flex-1 border rounded-lg px-2 py-1 text-sm focus:ring-2 focus:ring-blue-400"
+            />
+        </div>
+        <div className="flex items-center gap-2 mb-2">
+            <IoPersonOutline className="text-purple-500 w-4 h-4" />
+            <input
+                type="text"
+                value={classInfo.teacher || ""}
+                onChange={(e) =>
+                    onClassChange(day, index, { ...classInfo, teacher: e.target.value })
+                }
+                placeholder="Teacher"
+                className="flex-1 border rounded-lg px-2 py-1 text-sm focus:ring-2 focus:ring-purple-400"
+            />
+        </div>
+        <div className="flex items-center gap-2">
+            <IoTimeOutline className="text-green-500 w-4 h-4" />
             <select
-                value={classInfo.time || ''}
-                onChange={(e) => onClassChange(day, index, 'time', e.target.value)}
-                className="w-full p-3 border border-gray-200 rounded-xl bg-white focus:ring-2 focus:ring-blue-300 focus:border-transparent transition-all duration-200"
+                value={classInfo.timeSlot || ""}
+                onChange={(e) =>
+                    onClassChange(day, index, { ...classInfo, timeSlot: e.target.value })
+                }
+                className="flex-1 border rounded-lg px-2 py-1 text-sm focus:ring-2 focus:ring-green-400"
             >
-                <option value="">Select time period...</option>
-                {timeSlots.map(time => (
-                    <option key={time} value={time}>{time}</option>
+                <option value="">Select Time</option>
+                {timeSlots.map((slot, i) => (
+                    <option key={i} value={slot}>{slot}</option>
                 ))}
             </select>
+            <button
+                onClick={() => onRemoveClass(day, index)}
+                className="ml-2 text-red-500 hover:text-red-600 p-1"
+            >
+                <IoTrashOutline className="w-4 h-4" />
+            </button>
         </div>
-
-        {/* Subject Input */}
-        <div className="space-y-2">
-            <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
-                <IoBookOutline className="w-4 h-4 text-purple-500" />
-                Subject
-            </label>
-            <input 
-                type="text" 
-                placeholder="Enter subject name..." 
-                value={classInfo.subject || ''} 
-                onChange={(e) => onClassChange(day, index, 'subject', e.target.value)}
-                className="w-full p-3 border border-gray-200 rounded-xl bg-white focus:ring-2 focus:ring-purple-300 focus:border-transparent transition-all duration-200"
-            />
-        </div>
-
-        {/* Teacher Input */}
-        <div className="space-y-2">
-            <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
-                <IoPersonOutline className="w-4 h-4 text-green-500" />
-                Instructor
-            </label>
-            <input 
-                type="text" 
-                placeholder="Enter teacher name..." 
-                value={classInfo.teacher || ''} 
-                onChange={(e) => onClassChange(day, index, 'teacher', e.target.value)}
-                className="w-full p-3 border border-gray-200 rounded-xl bg-white focus:ring-2 focus:ring-green-300 focus:border-transparent transition-all duration-200"
-            />
-        </div>
-
-        {/* Remove Button */}
-        <button 
-            onClick={() => onRemoveClass(day, index)}
-            className="w-full bg-gradient-to-r from-red-500 to-red-600 text-white p-3 rounded-xl font-medium hover:from-red-600 hover:to-red-700 transition-all duration-200 active:scale-95 flex items-center justify-center gap-2"
-        >
-            <IoTrashOutline className="w-4 h-4" />
-            Remove Class
-        </button>
     </div>
 ));
-
 ClassCard.displayName = 'ClassCard';
 
+// ---------------- SCHEDULE EDITOR ----------------
 const ScheduleEditor = () => {
-    const { data: scheduleDoc, loading: scheduleLoading, updateDocument: updateSchedule } = useFirestoreDocument(['schedules', 'first_year']);
-    const { data: timeSlotsDoc, loading: timeSlotsLoading } = useFirestoreDocument(['time_slots', 'default_periods']);
+    const { 
+        data: scheduleDoc, 
+        loading: scheduleLoading, 
+        updateDocument: updateSchedule,
+        isOnline,
+        fromCache: scheduleFromCache,
+        hasPendingWrites: scheduleHasPending
+    } = useFirestoreDocument(['schedules', 'first_year']);
+    
+    const { 
+        data: timeSlotsDoc, 
+        loading: timeSlotsLoading,
+        fromCache: timeSlotsFromCache,
+        hasPendingWrites: timeSlotsHasPending
+    } = useFirestoreDocument(['time_slots', 'default_periods']);
     
     const [editorDays, setEditorDays] = useState({});
     const [isSaving, setIsSaving] = useState(false);
-    const [saveStatus, setSaveStatus] = useState(null);
     const [expandedDays, setExpandedDays] = useState({});
     
     const navigate = useNavigate();
     const daysOfWeek = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday"];
-    const loading = scheduleLoading || timeSlotsLoading;
+    
+    const loading = (scheduleLoading && !scheduleDoc) || (timeSlotsLoading && !timeSlotsDoc);
+    const fromCache = scheduleFromCache || timeSlotsFromCache;
+    const hasPendingWrites = scheduleHasPending || timeSlotsHasPending;
     const timeSlots = timeSlotsDoc?.periods || [];
 
     useEffect(() => {
@@ -99,45 +101,35 @@ const ScheduleEditor = () => {
             setEditorDays(scheduleDoc.days || {});
             const expanded = {};
             Object.keys(scheduleDoc.days || {}).forEach(day => {
-                if (scheduleDoc.days[day]?.length > 0) {
-                    expanded[day] = true;
-                }
+                if (scheduleDoc.days[day]?.length > 0) expanded[day] = true;
             });
             setExpandedDays(expanded);
         }
     }, [scheduleDoc]);
 
-    const handleClassChange = useCallback((day, index, field, value) => {
+    const handleClassChange = useCallback((day, index, updatedClass) => {
         setEditorDays(prev => {
-            const newEditorDays = { ...prev };
-            if (!newEditorDays[day]) newEditorDays[day] = [];
-            newEditorDays[day] = [...newEditorDays[day]];
-            newEditorDays[day][index] = { ...newEditorDays[day][index], [field]: value };
-            return newEditorDays;
+            const updated = { ...prev };
+            updated[day][index] = updatedClass;
+            return updated;
         });
-        setSaveStatus(null);
     }, []);
 
     const addClass = useCallback((day) => {
         setEditorDays(prev => {
-            const newEditorDays = { ...prev };
-            if (!newEditorDays[day]) newEditorDays[day] = [];
-            newEditorDays[day] = [...newEditorDays[day], { time: '', subject: '', teacher: '' }];
-            return newEditorDays;
+            const updated = { ...prev };
+            if (!updated[day]) updated[day] = [];
+            updated[day].push({ subject: "", teacher: "", timeSlot: "" });
+            return updated;
         });
         setExpandedDays(prev => ({ ...prev, [day]: true }));
     }, []);
 
     const removeClass = useCallback((day, index) => {
         setEditorDays(prev => {
-            const newEditorDays = { ...prev };
-            if (!newEditorDays[day]) return prev;
-            newEditorDays[day] = [...newEditorDays[day]];
-            newEditorDays[day].splice(index, 1);
-            if (newEditorDays[day].length === 0) {
-                setExpandedDays(prevExpanded => ({ ...prevExpanded, [day]: false }));
-            }
-            return newEditorDays;
+            const updated = { ...prev };
+            updated[day].splice(index, 1);
+            return updated;
         });
     }, []);
 
@@ -145,64 +137,37 @@ const ScheduleEditor = () => {
         setExpandedDays(prev => ({ ...prev, [day]: !prev[day] }));
     }, []);
 
+    const getDayColor = useCallback((day) => {
+        const colors = {
+            Sunday: "from-pink-100 to-pink-50",
+            Monday: "from-blue-100 to-blue-50",
+            Tuesday: "from-green-100 to-green-50",
+            Wednesday: "from-yellow-100 to-yellow-50",
+            Thursday: "from-purple-100 to-purple-50"
+        };
+        return colors[day] || "from-gray-100 to-gray-50";
+    }, []);
+
+    const getClassCount = useCallback((day) => editorDays[day]?.length || 0, [editorDays]);
+
     const handleSave = async () => {
         setIsSaving(true);
-        setSaveStatus(null);
-        try {
-            await updateSchedule({ days: editorDays });
-            setSaveStatus('success');
-            setTimeout(() => {
-                navigate('/schedule');
-            }, 1500);
-        } catch (error) {
-            console.error("Error saving schedule: ", error);
-            toast.error("Failed to save schedule."); // ✅ toast now works
+        const result = await updateSchedule({ days: editorDays });
+        if (result.success) {
+            setTimeout(() => navigate('/schedule'), 800);
+        } else {
             setIsSaving(false);
-            setSaveStatus('error');
         }
     };
 
-    const getDayColor = useCallback((index) => {
-        const colors = [
-            'from-red-400 to-red-500',
-            'from-orange-400 to-orange-500', 
-            'from-yellow-400 to-yellow-500',
-            'from-green-400 to-green-500',
-            'from-blue-400 to-blue-500',
-            'from-indigo-400 to-indigo-500',
-            'from-purple-400 to-purple-500'
-        ];
-        return colors[index % colors.length];
-    }, []);
-
-    const getClassCount = useCallback((day) => {
-        return editorDays[day]?.length || 0;
-    }, [editorDays]);
-
     const MobileEditorSkeleton = () => (
-        <div className="space-y-4 animate-pulse">
-            <div className="bg-white rounded-2xl p-4">
-                <div className="flex items-center justify-between mb-4">
-                    <div className="w-8 h-8 bg-gray-200 rounded-full"></div>
-                    <div className="h-6 bg-gray-200 rounded-lg w-32"></div>
-                    <div className="w-20 h-8 bg-gray-200 rounded-lg"></div>
-                </div>
-            </div>
-            {[1, 2, 3].map((item) => (
-                <div key={item} className="bg-white rounded-2xl p-4">
-                    <div className="flex items-center justify-between mb-4">
-                        <div className="flex items-center gap-3">
-                            <div className="w-4 h-4 bg-gray-200 rounded-full"></div>
-                            <div className="h-5 bg-gray-200 rounded-lg w-24"></div>
-                        </div>
-                        <div className="w-6 h-6 bg-gray-200 rounded"></div>
-                    </div>
-                    <div className="space-y-3">
-                        <div className="grid grid-cols-1 gap-3">
-                            <div className="h-12 bg-gray-200 rounded-xl"></div>
-                            <div className="h-12 bg-gray-200 rounded-xl"></div>
-                            <div className="h-12 bg-gray-200 rounded-xl"></div>
-                        </div>
+        <div className="space-y-4">
+            {daysOfWeek.map((day, idx) => (
+                <div key={idx} className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
+                    <Skeleton width={100} height={20} />
+                    <div className="mt-2 space-y-2">
+                        <Skeleton height={30} />
+                        <Skeleton height={30} />
                     </div>
                 </div>
             ))}
@@ -211,7 +176,6 @@ const ScheduleEditor = () => {
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50/20 px-4 py-2">
-            {/* Header */}
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 mb-6">
                 <div className="flex items-center justify-between">
                     <Link 
@@ -226,18 +190,17 @@ const ScheduleEditor = () => {
                     </div>
                     <button 
                         onClick={handleSave}
-                        disabled={isSaving}
+                        disabled={isSaving || !isOnline}
                         className={`px-4 py-2 rounded-xl font-medium transition-all duration-200 active:scale-95 flex items-center gap-2 ${
-                            isSaving 
+                            isSaving || !isOnline 
                                 ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
                                 : 'bg-gradient-to-r from-green-500 to-green-600 text-white hover:from-green-600 hover:to-green-700 shadow-md hover:shadow-lg'
                         }`}
                     >
                         {isSaving ? (
-                            <>
-                                <div className="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin"></div>
-                                <span>Saving...</span>
-                            </>
+                            <div className="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin"></div>
+                        ) : !isOnline ? (
+                            <span>Offline</span>
                         ) : (
                             <>
                                 <IoSaveOutline className="w-4 h-4" />
@@ -246,91 +209,53 @@ const ScheduleEditor = () => {
                         )}
                     </button>
                 </div>
-                {saveStatus && (
-                    <div className={`mt-3 p-3 rounded-xl flex items-center gap-2 ${
-                        saveStatus === 'success' 
-                            ? 'bg-green-50 text-green-700 border border-green-200' 
-                            : 'bg-red-50 text-red-700 border border-red-200'
-                    }`}>
-                        {saveStatus === 'success' ? (
-                            <>
-                                <IoCheckmarkCircleOutline className="w-5 h-5" />
-                                <span className="text-sm font-medium">Schedule saved successfully! Redirecting...</span>
-                            </>
-                        ) : (
-                            <>
-                                <IoWarningOutline className="w-5 h-5" />
-                                <span className="text-sm font-medium">Failed to save schedule. Please try again.</span>
-                            </>
-                        )}
-                    </div>
-                )}
+                <div className="mt-3">
+                    <NetworkStatus 
+                        isOnline={isOnline}
+                        fromCache={fromCache}
+                        hasPendingWrites={hasPendingWrites}
+                    />
+                </div>
             </div>
 
             {loading ? <MobileEditorSkeleton /> : (
                 <div className="space-y-4 pb-6">
-                    {daysOfWeek.map((day, dayIndex) => (
-                        <div key={day} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                    {daysOfWeek.map((day, idx) => (
+                        <div key={idx} className="rounded-xl shadow-sm border border-gray-200 overflow-hidden">
                             <button
                                 onClick={() => toggleDay(day)}
-                                className="w-full p-4 flex items-center justify-between hover:bg-gray-50 transition-colors"
+                                className={`w-full flex items-center justify-between p-4 bg-gradient-to-r ${getDayColor(day)} hover:opacity-90 transition`}
                             >
-                                <div className="flex items-center gap-3">
-                                    <div className={`w-4 h-4 rounded-full bg-gradient-to-r ${getDayColor(dayIndex)}`}></div>
-                                    <div className="text-left">
-                                        <h2 className="text-lg font-semibold text-gray-900">{day}</h2>
-                                        <p className="text-sm text-gray-600">
-                                            {getClassCount(day)} {getClassCount(day) === 1 ? 'class' : 'classes'}
-                                        </p>
-                                    </div>
-                                </div>
                                 <div className="flex items-center gap-2">
-                                    {getClassCount(day) > 0 && (
-                                        <div className="px-2 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-medium">
-                                            {getClassCount(day)}
-                                        </div>
-                                    )}
-                                    <IoCalendarOutline 
-                                        className={`w-5 h-5 text-gray-400 transition-transform duration-200 ${expandedDays[day] ? 'rotate-180' : ''}`} 
-                                    />
+                                    <IoCalendarOutline className="text-gray-700" />
+                                    <span className="font-semibold">{day}</span>
                                 </div>
+                                <span className="text-sm text-gray-600">{getClassCount(day)} classes</span>
                             </button>
                             {expandedDays[day] && (
-                                <div className="px-4 pb-4 space-y-4 border-t border-gray-100">
+                                <div className="p-4">
                                     {(editorDays[day] || []).map((classInfo, index) => (
-                                        <ClassCard 
-                                            key={`${day}-${index}`}
+                                        <ClassCard
+                                            key={index}
                                             day={day}
-                                            classInfo={classInfo}
                                             index={index}
+                                            classInfo={classInfo}
                                             timeSlots={timeSlots}
                                             onClassChange={handleClassChange}
                                             onRemoveClass={removeClass}
                                         />
                                     ))}
-                                    <button 
+                                    <button
                                         onClick={() => addClass(day)}
-                                        className="w-full bg-gradient-to-r from-blue-500 to-blue-600 text-white p-4 rounded-xl font-medium hover:from-blue-600 hover:to-blue-700 transition-all duration-200 active:scale-95 flex items-center justify-center gap-2"
+                                        className="flex items-center gap-2 text-blue-600 hover:text-blue-700 mt-2"
                                     >
                                         <IoAddOutline className="w-5 h-5" />
-                                        Add New Class
+                                        <span>Add Class</span>
                                     </button>
                                 </div>
                             )}
                         </div>
                     ))}
-                    <div className="bg-gradient-to-r from-blue-50 to-purple-50 border border-blue-200 rounded-2xl p-4">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <h3 className="font-semibold text-blue-900 text-sm mb-1">Schedule Overview</h3>
-                                <p className="text-blue-700 text-xs">
-                                    Total classes: {Object.values(editorDays).flat().length} • 
-                                    Active days: {Object.keys(editorDays).filter(day => editorDays[day]?.length > 0).length}
-                                </p>
-                            </div>
-                            <div className="text-2xl">📚</div>
-                        </div>
-                    </div>
                 </div>
             )}
         </div>
