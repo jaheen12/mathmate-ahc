@@ -22,6 +22,7 @@ jobs:
         run: npm install
 
       - name: Create .env file from Secrets
+        # ✅ This part is correct. No changes needed.
         env:
           VITE_API_KEY: ${{ secrets.VITE_API_KEY }}
           VITE_AUTH_DOMAIN: ${{ secrets.VITE_AUTH_DOMAIN }}
@@ -30,7 +31,6 @@ jobs:
           VITE_MESSAGING_SENDER_ID: ${{ secrets.VITE_MESSAGING_SENDER_ID }}
           VITE_APP_ID: ${{ secrets.VITE_APP_ID }}
           VITE_MEASUREMENT_ID: ${{ secrets.VITE_MEASUREMENT_ID }}
-          TAILWIND_DISABLE_NATIVE_FS_WATCHER: true
         run: |
           echo "VITE_API_KEY=$VITE_API_KEY" >> .env
           echo "VITE_AUTH_DOMAIN=$VITE_AUTH_DOMAIN" >> .env
@@ -39,8 +39,6 @@ jobs:
           echo "VITE_MESSAGING_SENDER_ID=$VITE_MESSAGING_SENDER_ID" >> .env
           echo "VITE_APP_ID=$VITE_APP_ID" >> .env
           echo "VITE_MEASUREMENT_ID=$VITE_MEASUREMENT_ID" >> .env
-          echo "TAILWIND_DISABLE_NATIVE_FS_WATCHER=$TAILWIND_DISABLE_NATIVE_FS_WATCHER" >> .env
-          echo "CI=false" >> .env
       
       - name: Build web assets
         run: npm run build
@@ -57,16 +55,16 @@ jobs:
       - name: Add Android platform and Sync
         run: npx cap add android && npx cap sync android
 
-      # --- SIGNING STEPS START HERE ---
+      # --- DEFINITIVE SIGNING STEPS ---
 
       - name: Decode Keystore from Secret
         env:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
         run: |
-          echo "Decoding keystore..."
-          # This creates the keystore file inside the android/app/ directory
-          echo $ANDROID_KEYSTORE_BASE64 | base64 --decode > android/app/release.keystore
-          echo "Keystore file created at android/app/release.keystore"
+          echo "Decoding keystore to an absolute path..."
+          # ➡️ We create the keystore file at a known, absolute location.
+          echo $ANDROID_KEYSTORE_BASE64 | base64 --decode > ${{ github.workspace }}/android/app/release.keystore
+          echo "Keystore file created."
 
       - name: Create Keystore Properties File
         env:
@@ -74,16 +72,14 @@ jobs:
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: |
-          echo "Writing keystore.properties..."
-          # This creates a file in the android/ directory
-          echo "storePassword=${KEYSTORE_PASSWORD}" > android/keystore.properties
-          echo "keyAlias=${KEY_ALIAS}" >> android/keystore.properties
-          echo "keyPassword=${KEY_PASSWORD}" >> android/keystore.properties
-          # This path is relative to the keystore.properties file, pointing to the keystore inside the app folder
-          echo "storeFile=app/release.keystore" >> android/keystore.properties
-          echo "Keystore properties file created at android/keystore.properties"
-
-      # --- SIGNING STEPS END HERE ---
+          echo "Writing keystore.properties with an absolute path..."
+          # ➡️ We create the properties file in the /android directory.
+          echo "storePassword=${KEYSTORE_PASSWORD}" > ${{ github.workspace }}/android/keystore.properties
+          echo "keyAlias=${KEY_ALIAS}" >> ${{ github.workspace }}/android/keystore.properties
+          echo "keyPassword=${KEY_PASSWORD}" >> ${{ github.workspace }}/android/keystore.properties
+          # ➡️ CRITICAL: We write the FULL, ABSOLUTE path to the keystore into this file.
+          echo "storeFile=${{ github.workspace }}/android/app/release.keystore" >> ${{ github.workspace }}/android/keystore.properties
+          echo "Keystore properties file created."
       
       - name: Make gradlew executable
         run: chmod +x ./gradlew
@@ -100,5 +96,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: app-signed-release.apk
-          path: android/app/build/outputs/apk/release/*.apk
+          # ➡️ The output of a successful signed build is app-release.apk, not app-release-unsigned.apk.
+          # This acts as a final safety check.
+          path: android/app/build/outputs/apk/release/app-release.apk
           if-no-files-found: error
