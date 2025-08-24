@@ -1,4 +1,4 @@
-name: Android CI - Build Signed APK
+name: Android CI - Build Signed APK & AAB
 
 on:
   push:
@@ -9,6 +9,7 @@ on:
 jobs:
   build-and-sign:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -22,7 +23,6 @@ jobs:
         run: npm install
 
       - name: Create .env file from Secrets
-        # ✅ This part is correct. No changes needed.
         env:
           VITE_API_KEY: ${{ secrets.VITE_API_KEY }}
           VITE_AUTH_DOMAIN: ${{ secrets.VITE_AUTH_DOMAIN }}
@@ -39,7 +39,7 @@ jobs:
           echo "VITE_MESSAGING_SENDER_ID=$VITE_MESSAGING_SENDER_ID" >> .env
           echo "VITE_APP_ID=$VITE_APP_ID" >> .env
           echo "VITE_MEASUREMENT_ID=$VITE_MEASUREMENT_ID" >> .env
-      
+
       - name: Build web assets
         run: npm run build
 
@@ -55,16 +55,13 @@ jobs:
       - name: Add Android platform and Sync
         run: npx cap add android && npx cap sync android
 
-      # --- DEFINITIVE SIGNING STEPS ---
-
+      # --- SIGNING SETUP ---
       - name: Decode Keystore from Secret
         env:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
         run: |
-          echo "Decoding keystore to an absolute path..."
-          # ➡️ We create the keystore file at a known, absolute location.
+          echo "Decoding keystore to android/app/release.keystore..."
           echo $ANDROID_KEYSTORE_BASE64 | base64 --decode > ${{ github.workspace }}/android/app/release.keystore
-          echo "Keystore file created."
 
       - name: Create Keystore Properties File
         env:
@@ -72,31 +69,33 @@ jobs:
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: |
-          echo "Writing keystore.properties with an absolute path..."
-          # ➡️ We create the properties file in the /android directory.
           echo "storePassword=${KEYSTORE_PASSWORD}" > ${{ github.workspace }}/android/keystore.properties
           echo "keyAlias=${KEY_ALIAS}" >> ${{ github.workspace }}/android/keystore.properties
           echo "keyPassword=${KEY_PASSWORD}" >> ${{ github.workspace }}/android/keystore.properties
-          # ➡️ CRITICAL: We write the FULL, ABSOLUTE path to the keystore into this file.
           echo "storeFile=${{ github.workspace }}/android/app/release.keystore" >> ${{ github.workspace }}/android/keystore.properties
-          echo "Keystore properties file created."
-      
+
       - name: Make gradlew executable
         run: chmod +x ./gradlew
         working-directory: ./android
 
-      - name: Build Signed Android APK
-        run: ./gradlew assembleRelease
+      - name: Build Signed APK & AAB
+        run: ./gradlew clean assembleRelease bundleRelease
         working-directory: ./android
 
-      - name: List files in build output directory
-        run: ls -R android/app/build/outputs/apk/release
+      - name: List build outputs
+        run: ls -R android/app/build/outputs/
 
+      # --- UPLOAD ARTIFACTS ---
       - name: Upload Signed APK
         uses: actions/upload-artifact@v4
         with:
-          name: app-signed-release.apk
-          # ➡️ The output of a successful signed build is app-release.apk, not app-release-unsigned.apk.
-          # This acts as a final safety check.
+          name: app-signed-release
           path: android/app/build/outputs/apk/release/app-release.apk
+          if-no-files-found: error
+
+      - name: Upload Signed AAB
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-signed-release-aab
+          path: android/app/build/outputs/bundle/release/app-release.aab
           if-no-files-found: error
