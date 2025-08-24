@@ -52,8 +52,9 @@ jobs:
       - name: Install Capacitor CLI
         run: npm install -g @capacitor/cli
 
-      - name: Add Android platform and Sync
-        run: npx cap add android && npx cap sync android
+      # ✅ Only sync, do not add platform
+      - name: Sync Capacitor with Android
+        run: npx cap sync android
 
       # --- SIGNING SETUP ---
       - name: Decode Keystore from Secret
