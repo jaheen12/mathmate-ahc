@@ -1,0 +1,8 @@
+{
+	"appId": "com.jaheen12.mathmateahc",
+	"appName": "MathMate AHC",
+	"webDir": "dist",
+	"server": {
+		"androidScheme": "https"
+	}
+}
