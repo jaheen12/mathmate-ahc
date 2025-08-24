@@ -49,6 +49,12 @@ jobs:
           distribution: 'zulu'
           java-version: '17'
 
+      - name: Set up Android SDK 34
+        uses: android-actions/setup-android@v2
+        with:
+          api-level: 34
+          build-tools: 34.0.0
+
       - name: Install Capacitor CLI
         run: npm install -g @capacitor/cli
 
