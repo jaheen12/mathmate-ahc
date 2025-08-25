@@ -40,24 +40,36 @@ const PersonalChapters = ({ setHeaderTitle }) => {
     const [isAdding, setIsAdding] = useState(false);
     const [renamingChapterId, setRenamingChapterId] = useState(null);
     const [renamingChapterName, setRenamingChapterName] = useState('');
-
+    
     // --- Handlers ---
     const handleSaveChapter = async () => {
         if (newChapterName.trim() === '') return;
-        await addItem({ name: newChapterName.trim() });
-        setNewChapterName('');
-        setIsAdding(false);
+        try {
+            await addItem({ name: newChapterName.trim() });
+            setNewChapterName('');
+            setIsAdding(false);
+        } catch (error) {
+            console.error("Error adding chapter: ", error);
+        }
     };
 
     const handleDelete = async (chapterId) => {
-        await deleteItem(chapterId, false);
+        try {
+            await deleteItem(chapterId, false);
+        } catch (error) {
+            console.error("Error deleting chapter: ", error);
+        }
     };
 
     const handleSaveRename = async () => {
         if (renamingChapterName.trim() === '') return;
-        await updateItem(renamingChapterId, { name: renamingChapterName.trim() });
-        setRenamingChapterId(null);
-        setRenamingChapterName('');
+        try {
+            await updateItem(renamingChapterId, { name: renamingChapterName.trim() });
+            setRenamingChapterId(null);
+            setRenamingChapterName('');
+        } catch (error) {
+            console.error("Error updating chapter: ", error);
+        }
     };
     
     const handleRenameClick = (chapter) => {
@@ -122,15 +134,42 @@ const PersonalChapters = ({ setHeaderTitle }) => {
 
                 {isAdding && (
                     <div className="my-4 p-4 bg-white rounded-lg shadow-md border">
-                        {/* Add form implementation */}
+                        <input 
+                            type="text" 
+                            value={newChapterName} 
+                            onChange={(e) => setNewChapterName(e.target.value)} 
+                            placeholder="Enter chapter name" 
+                            className="p-2 border border-gray-300 rounded-lg w-full"
+                        />
+                        <button 
+                            onClick={handleSaveChapter} 
+                            className="mt-2 inline-flex items-center px-4 py-2 bg-blue-500 text-white font-semibold rounded-lg"
+                            disabled={!newChapterName.trim()}
+                        >
+                            Save Chapter
+                        </button>
                     </div>
                 )}
+                
                 {renamingChapterId && (
-                     <div className="my-4 p-4 bg-white rounded-lg shadow-md border">
-                        {/* Rename form implementation */}
+                    <div className="my-4 p-4 bg-white rounded-lg shadow-md border">
+                        <input 
+                            type="text" 
+                            value={renamingChapterName} 
+                            onChange={(e) => setRenamingChapterName(e.target.value)} 
+                            placeholder="Enter new chapter name" 
+                            className="p-2 border border-gray-300 rounded-lg w-full"
+                        />
+                        <button 
+                            onClick={handleSaveRename} 
+                            className="mt-2 inline-flex items-center px-4 py-2 bg-blue-500 text-white font-semibold rounded-lg"
+                            disabled={!renamingChapterName.trim()}
+                        >
+                            Save Rename
+                        </button>
                     </div>
                 )}
-            
+
                 <div className="mt-4">
                     {loading && chapters.length === 0 ? (
                         <ChaptersSkeleton />
