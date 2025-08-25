@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 
 // Simple icon components
 const AddIcon = () => (
@@ -52,14 +52,14 @@ const MenuIcon = () => (
     </svg>
 );
 
-// Separate component for individual time slot to prevent re-renders
-const TimeSlotRow = ({ timeSlot, onTimeChange, onRemove, error }) => {
+// Time Slot Row Component
+const TimeSlotRow = React.memo(({ timeSlot, onTimeChange, onRemove, error }) => {
     const inputRef = useRef(null);
 
-    const handleInputChange = (e) => {
+    const handleInputChange = useCallback((e) => {
         const value = e.target.value.replace(/[^\d:-]/g, ''); // Only allow digits, colon, dash
         onTimeChange(timeSlot.id, value);
-    };
+    }, [timeSlot.id, onTimeChange]);
 
     return (
         <div className="group mb-4">
@@ -98,8 +98,9 @@ const TimeSlotRow = ({ timeSlot, onTimeChange, onRemove, error }) => {
             )}
         </div>
     );
-};
+});
 
+// Time Slots Editor Modal Component
 const TimeSlotsEditorModal = ({ isOpen, onClose, initialTimeSlots, onSave, isOnline }) => {
     const [timeSlots, setTimeSlots] = useState([]);
     const [errors, setErrors] = useState({});
@@ -113,15 +114,11 @@ const TimeSlotsEditorModal = ({ isOpen, onClose, initialTimeSlots, onSave, isOnl
                 id: `slot-${nextIdRef.current++}`,
                 value: slot || ""
             }));
-            
-            // Add empty slot if none exist
+
             if (slots.length === 0) {
-                slots.push({
-                    id: `slot-${nextIdRef.current++}`,
-                    value: ""
-                });
+                slots.push({ id: `slot-${nextIdRef.current++}`, value: "" });
             }
-            
+
             setTimeSlots(slots);
             setErrors({});
         }
@@ -131,7 +128,6 @@ const TimeSlotsEditorModal = ({ isOpen, onClose, initialTimeSlots, onSave, isOnl
     const validateTimeSlot = (time, currentId) => {
         if (!time.trim()) return null; // Allow empty during typing
         
-        // Check format: HH:MM-HH:MM or H:MM-HH:MM
         const timeRangeRegex = /^(\d{1,2}):(\d{2})-(\d{1,2}):(\d{2})$/;
         const match = time.match(timeRangeRegex);
         
@@ -139,7 +135,6 @@ const TimeSlotsEditorModal = ({ isOpen, onClose, initialTimeSlots, onSave, isOnl
         
         const [, startHour, startMin, endHour, endMin] = match;
         
-        // Validate time values
         const sHour = parseInt(startHour);
         const sMin = parseInt(startMin);
         const eHour = parseInt(endHour);
@@ -148,12 +143,10 @@ const TimeSlotsEditorModal = ({ isOpen, onClose, initialTimeSlots, onSave, isOnl
         if (sHour > 23 || eHour > 23) return "Hours must be 0-23";
         if (sMin > 59 || eMin > 59) return "Minutes must be 0-59";
         
-        // Check if start time is before end time
         const startMinutes = sHour * 60 + sMin;
         const endMinutes = eHour * 60 + eMin;
         if (startMinutes >= endMinutes) return "Start time must be before end time";
         
-        // Check for duplicates
         const duplicate = timeSlots.find(slot => slot.id !== currentId && slot.value === time);
         if (duplicate) return "Duplicate time range not allowed";
         
@@ -161,30 +154,18 @@ const TimeSlotsEditorModal = ({ isOpen, onClose, initialTimeSlots, onSave, isOnl
     };
 
     // Handle time slot change
-    const handleTimeSlotChange = (id, value) => {
-        // Update the value immediately
-        setTimeSlots(prev => prev.map(slot => 
-            slot.id === id ? { ...slot, value } : slot
-        ));
+    const handleTimeSlotChange = useCallback((id, value) => {
+        setTimeSlots(prev => prev.map(slot => slot.id === id ? { ...slot, value } : slot));
 
-        // Validate and set errors
         const error = validateTimeSlot(value, id);
-        setErrors(prev => ({
-            ...prev,
-            [id]: error
-        }));
-    };
+        setErrors(prev => ({ ...prev, [id]: error }));
+    }, [timeSlots]);
 
-    // Add new time slot
     const handleAddTimeSlot = () => {
-        const newSlot = {
-            id: `slot-${nextIdRef.current++}`,
-            value: ""
-        };
+        const newSlot = { id: `slot-${nextIdRef.current++}`, value: "" };
         setTimeSlots(prev => [...prev, newSlot]);
     };
 
-    // Remove time slot
     const handleRemoveTimeSlot = (id) => {
         setTimeSlots(prev => prev.filter(slot => slot.id !== id));
         setErrors(prev => {
@@ -194,7 +175,6 @@ const TimeSlotsEditorModal = ({ isOpen, onClose, initialTimeSlots, onSave, isOnl
         });
     };
 
-    // Save changes
     const handleSaveChanges = async () => {
         setIsSaving(true);
         try {
@@ -206,11 +186,10 @@ const TimeSlotsEditorModal = ({ isOpen, onClose, initialTimeSlots, onSave, isOnl
         } catch (err) {
             console.error("Save failed:", err);
         } finally {
-            setIsSaving(false);
+        setIsSaving(false);
         }
     };
 
-    // Handle backdrop click
     const handleBackdropClick = (e) => {
         if (e.target === e.currentTarget) onClose();
     };
@@ -226,25 +205,29 @@ const TimeSlotsEditorModal = ({ isOpen, onClose, initialTimeSlots, onSave, isOnl
         <div 
             className="fixed inset-0 bg-black bg-opacity-50 flex items-end sm:items-center justify-center z-50 p-4"
             onClick={handleBackdropClick}
+            role="dialog"
+            aria-labelledby="time-slot-modal-title"
+            aria-describedby="time-slot-modal-description"
         >
             <div className="bg-white rounded-t-2xl sm:rounded-2xl w-full max-w-md max-h-[85vh] flex flex-col shadow-2xl">
                 
                 {/* Header */}
                 <div className="flex items-center justify-between p-4 border-b border-gray-100">
-                    <h2 className="text-lg font-semibold flex items-center gap-2 text-gray-900">
+                    <h2 id="time-slot-modal-title" className="text-lg font-semibold flex items-center gap-2 text-gray-900">
                         <MenuIcon />
                         Edit Time Slots
                     </h2>
                     <button 
                         onClick={onClose} 
                         className="p-1 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-all"
+                        aria-label="Close modal"
                     >
                         <CloseIcon />
                     </button>
                 </div>
 
                 {/* Body */}
-                <div className="flex-1 overflow-y-auto p-4">
+                <div id="time-slot-modal-description" className="flex-1 overflow-y-auto p-4">
                     {timeSlots.map((slot) => (
                         <TimeSlotRow
                             key={slot.id}
@@ -271,6 +254,7 @@ const TimeSlotsEditorModal = ({ isOpen, onClose, initialTimeSlots, onSave, isOnl
                         <button 
                             onClick={onClose}
                             className="flex-1 bg-white text-gray-700 border border-gray-200 py-3 rounded-lg font-medium hover:bg-gray-50 transition-all"
+                            aria-label="Cancel changes"
                         >
                             Cancel
                         </button>
@@ -282,6 +266,7 @@ const TimeSlotsEditorModal = ({ isOpen, onClose, initialTimeSlots, onSave, isOnl
                                     ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
                                     : 'bg-blue-600 text-white hover:bg-blue-700 shadow-sm'
                             }`}
+                            aria-label="Save changes"
                         >
                             {isSaving ? (
                                 <>
