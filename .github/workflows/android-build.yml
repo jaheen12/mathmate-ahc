@@ -61,25 +61,18 @@ jobs:
       - name: Sync Capacitor with Android
         run: npx cap sync android
 
-      - name: Debug - Check MainActivity location and content
+      - name: CRITICAL - Fix MainActivity.java after sync
         run: |
-          echo "=== Searching for MainActivity.java files ==="
-          find android/ -name "MainActivity.java" -type f
-          echo "=== Content of MainActivity.java files ==="
-          find android/ -name "MainActivity.java" -type f -exec echo "File: {}" \; -exec cat {} \;
-
-      - name: Fix MainActivity.java issue
-        run: |
-          echo "=== Before cleanup ==="
-          find android/app/src/main/java -name "MainActivity.java" -type f || echo "No MainActivity.java files found"
+          echo "=== DEBUGGING - Files before fix ==="
+          find android/app/src/main/java -name "*.java" -type f 2>/dev/null || echo "No Java files found"
           
-          # Remove the entire com/jaheen12 directory tree to clean up any old structure
+          echo "=== REMOVING old structure completely ==="
           rm -rf android/app/src/main/java/com/jaheen12
           
-          # Recreate the correct directory structure
+          echo "=== CREATING correct structure ==="
           mkdir -p android/app/src/main/java/com/jaheen12/mathmateahc
           
-          # Create the correct MainActivity.java file
+          echo "=== CREATING MainActivity.java with correct package ==="
           cat > android/app/src/main/java/com/jaheen12/mathmateahc/MainActivity.java << 'EOF'
           package com.jaheen12.mathmateahc;
           
@@ -88,25 +81,10 @@ jobs:
           public class MainActivity extends BridgeActivity {}
           EOF
           
-          echo "=== After cleanup ==="
-          find android/app/src/main/java -name "MainActivity.java" -type f
-          echo "=== Content of MainActivity.java ==="
+          echo "=== VERIFICATION - Files after fix ==="
+          find android/app/src/main/java -name "*.java" -type f
+          echo "=== MainActivity.java content ==="
           cat android/app/src/main/java/com/jaheen12/mathmateahc/MainActivity.java
-
-      - name: Fix MainActivity.java if needed
-        run: |
-          # Remove any old MainActivity.java files in wrong locations
-          find android/app/src/main/java -name "MainActivity.java" -not -path "*/com/jaheen12/mathmateahc/*" -delete
-          
-          # Ensure the correct MainActivity.java exists
-          mkdir -p android/app/src/main/java/com/jaheen12/mathmateahc
-          cat > android/app/src/main/java/com/jaheen12/mathmateahc/MainActivity.java << 'EOF'
-          package com.jaheen12.mathmateahc;
-          
-          import com.getcapacitor.BridgeActivity;
-          
-          public class MainActivity extends BridgeActivity {}
-          EOF
 
       - name: Decode Keystore from Secret
         env:
