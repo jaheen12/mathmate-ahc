@@ -68,13 +68,18 @@ jobs:
           echo "=== Content of MainActivity.java files ==="
           find android/ -name "MainActivity.java" -type f -exec echo "File: {}" \; -exec cat {} \;
 
-      - name: Fix MainActivity.java if needed
+      - name: Fix MainActivity.java issue
         run: |
-          # Remove any old MainActivity.java files in wrong locations
-          find android/app/src/main/java -name "MainActivity.java" -not -path "*/com/jaheen12/mathmateahc/*" -delete
+          echo "=== Before cleanup ==="
+          find android/app/src/main/java -name "MainActivity.java" -type f || echo "No MainActivity.java files found"
           
-          # Ensure the correct MainActivity.java exists
+          # Remove the entire com/jaheen12 directory tree to clean up any old structure
+          rm -rf android/app/src/main/java/com/jaheen12
+          
+          # Recreate the correct directory structure
           mkdir -p android/app/src/main/java/com/jaheen12/mathmateahc
+          
+          # Create the correct MainActivity.java file
           cat > android/app/src/main/java/com/jaheen12/mathmateahc/MainActivity.java << 'EOF'
           package com.jaheen12.mathmateahc;
           
@@ -82,6 +87,11 @@ jobs:
           
           public class MainActivity extends BridgeActivity {}
           EOF
+          
+          echo "=== After cleanup ==="
+          find android/app/src/main/java -name "MainActivity.java" -type f
+          echo "=== Content of MainActivity.java ==="
+          cat android/app/src/main/java/com/jaheen12/mathmateahc/MainActivity.java
 
       - name: Fix MainActivity.java if needed
         run: |
