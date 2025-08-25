@@ -42,8 +42,8 @@ jobs:
 
       - name: Build web assets
         run: npm run build
-      
-          - name: Set up JDK 17
+
+      - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
           distribution: 'zulu'
@@ -54,16 +54,6 @@ jobs:
         with:
           api-level: 34
           build-tools: 34.0.0
-          
-      - name: Cache Gradle packages
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.gradle/caches
-            ~/.gradle/wrapper
-          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
-          restore-keys: |
-            ${{ runner.os }}-gradle-
 
       - name: Install Capacitor CLI
         run: npm install -g @capacitor/cli
@@ -71,7 +61,6 @@ jobs:
       - name: Sync Capacitor with Android
         run: npx cap sync android
 
-      # --- SIGNING SETUP ---
       - name: Decode Keystore from Secret
         env:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
@@ -101,7 +90,6 @@ jobs:
       - name: List build outputs
         run: ls -R android/app/build/outputs/
 
-      # --- UPLOAD ARTIFACTS ---
       - name: Upload Signed APK
         uses: actions/upload-artifact@v4
         with:
