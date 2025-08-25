@@ -42,23 +42,32 @@ jobs:
 
       - name: Build web assets
         run: npm run build
-
-      - name: Set up JDK 17
+      
+          - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
           distribution: 'zulu'
           java-version: '17'
 
       - name: Set up Android SDK 34
-        uses: android-actions/setup-android@v2
+        uses: android-actions/setup-android@v3
         with:
           api-level: 34
           build-tools: 34.0.0
+          
+      - name: Cache Gradle packages
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
 
       - name: Install Capacitor CLI
         run: npm install -g @capacitor/cli
 
-      # ✅ Only sync, do not add platform
       - name: Sync Capacitor with Android
         run: npx cap sync android
 
