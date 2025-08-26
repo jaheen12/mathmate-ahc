@@ -11,6 +11,264 @@ import { IoArrowBack, IoBook } from "react-icons/io5";
 import { HiOutlineCollection } from "react-icons/hi";
 import Skeleton from 'react-loading-skeleton';
 
+// Memoized components to prevent unnecessary re-renders
+const ChaptersSkeleton = React.memo(() => (
+    <div className="space-y-3">
+        {Array(5).fill().map((_, index) => (
+            <div key={index} className="p-5 bg-white rounded-xl border border-gray-100 animate-pulse">
+                <div className="flex items-center space-x-4">
+                    <div className="w-3 h-3 bg-gray-200 rounded-full"></div>
+                    <div className="w-5 h-5 bg-gray-200 rounded"></div>
+                    <div className="h-6 bg-gray-200 rounded flex-1 max-w-sm"></div>
+                </div>
+            </div>
+        ))}
+    </div>
+));
+
+const EmptyState = React.memo(({ searchTerm, clearSearch }) => (
+    <div className="text-center py-20">
+        <div className="relative">
+            <HiOutlineCollection size={80} className="mx-auto text-gray-300" />
+            <div className="absolute -top-2 -right-2 w-6 h-6 bg-purple-500 rounded-full opacity-20 animate-ping"></div>
+        </div>
+        <h3 className="text-2xl font-bold text-gray-700 mt-6">
+            {searchTerm ? 'No Matching Chapters' : 'No Chapters Yet'}
+        </h3>
+        <p className="text-gray-500 mt-2 max-w-md mx-auto">
+            {searchTerm 
+                ? `No chapters found matching "${searchTerm}". Try a different search term.`
+                : "Start organizing your content by creating the first chapter."
+            }
+        </p>
+        {searchTerm && (
+            <button
+                onClick={clearSearch}
+                className="mt-4 px-4 py-2 text-purple-600 hover:text-purple-700 font-medium transition-colors"
+            >
+                Clear Search
+            </button>
+        )}
+    </div>
+));
+
+// Separate form component to isolate input state
+const AddChapterForm = React.memo(({ onSave, onCancel, isOnline }) => {
+    const [inputValue, setInputValue] = useState('');
+    
+    const handleInputChange = useCallback((e) => {
+        setInputValue(e.target.value);
+    }, []);
+
+    const handleSave = useCallback(async () => {
+        if (inputValue.trim() === '') return;
+        try {
+            await onSave(inputValue.trim());
+            setInputValue('');
+        } catch (error) {
+            console.error('Failed to add chapter:', error);
+        }
+    }, [inputValue, onSave]);
+
+    const handleKeyPress = useCallback((e) => {
+        if (e.key === 'Enter') {
+            handleSave();
+        } else if (e.key === 'Escape') {
+            setInputValue('');
+            onCancel();
+        }
+    }, [handleSave, onCancel]);
+
+    return (
+        <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6 mb-6">
+            <h3 className="text-lg font-semibold text-gray-800 mb-4">Add New Chapter</h3>
+            <div className="flex gap-3">
+                <div className="flex-1">
+                    <input
+                        type="text"
+                        value={inputValue}
+                        onChange={handleInputChange}
+                        onKeyPress={handleKeyPress}
+                        placeholder="Enter chapter name..."
+                        className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none transition-all"
+                        autoFocus
+                    />
+                </div>
+                <button
+                    onClick={handleSave}
+                    disabled={!inputValue.trim() || !isOnline}
+                    className="px-4 py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
+                >
+                    <MdCheck size={18} />
+                    Save
+                </button>
+                <button
+                    onClick={onCancel}
+                    className="px-4 py-2.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors flex items-center gap-2"
+                >
+                    <FaTimes size={14} />
+                    Cancel
+                </button>
+            </div>
+        </div>
+    );
+});
+
+const ChapterItem = React.memo(({ 
+    chapter, 
+    index, 
+    subjectId, 
+    isOnline, 
+    onNavigate, 
+    onRename, 
+    onDelete, 
+    isRenaming, 
+    renamingValue, 
+    setRenamingValue, 
+    onSaveRename, 
+    onCancelRename, 
+    handleKeyPress,
+    hoveredChapter,
+    setHoveredChapter
+}) => {
+    const isPending = chapter._metadata?.hasPendingWrites;
+    const isHovered = hoveredChapter === chapter.id;
+
+    const handleMouseEnter = useCallback(() => setHoveredChapter(chapter.id), [chapter.id, setHoveredChapter]);
+    const handleMouseLeave = useCallback(() => setHoveredChapter(null), [setHoveredChapter]);
+    
+    const handleNavigateClick = useCallback(() => {
+        if (!isRenaming) onNavigate(`/notes/${subjectId}/${chapter.id}`);
+    }, [isRenaming, onNavigate, subjectId, chapter.id]);
+    
+    const handleRenameClick = useCallback((e) => {
+        e.stopPropagation();
+        onRename(chapter);
+    }, [onRename, chapter]);
+    
+    const handleDeleteClick = useCallback((e) => {
+        e.stopPropagation();
+        onDelete(chapter.id);
+    }, [onDelete, chapter.id]);
+
+    const handleRenamingChange = useCallback((e) => {
+        setRenamingValue(e.target.value);
+    }, [setRenamingValue]);
+
+    const handleRenamingKeyPress = useCallback((e) => {
+        handleKeyPress(e, onSaveRename);
+    }, [handleKeyPress, onSaveRename]);
+
+    return (
+        <div 
+            className={`group relative bg-white/80 backdrop-blur-sm rounded-xl border transition-all duration-300 ${
+                isPending 
+                    ? 'opacity-60 border-yellow-200 shadow-yellow-100' 
+                    : isHovered
+                        ? 'border-purple-300 shadow-purple-100 shadow-lg transform translate-x-1'
+                        : 'border-gray-100 shadow-sm hover:shadow-lg hover:border-gray-200'
+            }`}
+            onMouseEnter={handleMouseEnter}
+            onMouseLeave={handleMouseLeave}
+        >
+            {/* Rename Form Overlay */}
+            {isRenaming && (
+                <div className="absolute inset-0 bg-white rounded-xl border-2 border-purple-500 shadow-lg z-10 p-4">
+                    <div className="flex flex-col gap-3 h-full justify-center">
+                        <label className="text-sm font-medium text-gray-700">Rename Chapter</label>
+                        <input
+                            type="text"
+                            value={renamingValue}
+                            onChange={handleRenamingChange}
+                            onKeyPress={handleRenamingKeyPress}
+                            className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
+                            autoFocus
+                        />
+                        <div className="flex gap-2">
+                            <button
+                                onClick={onSaveRename}
+                                disabled={!renamingValue.trim()}
+                                className="flex-1 px-3 py-2 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 disabled:opacity-50 transition-colors flex items-center justify-center gap-1"
+                            >
+                                <MdCheck size={16} />
+                                Save
+                            </button>
+                            <button
+                                onClick={onCancelRename}
+                                className="flex-1 px-3 py-2 bg-gray-100 text-gray-700 text-sm rounded-lg hover:bg-gray-200 transition-colors flex items-center justify-center gap-1"
+                            >
+                                <FaTimes size={12} />
+                                Cancel
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Main Content */}
+            <div className="flex justify-between items-center p-5">
+                <div 
+                    onClick={handleNavigateClick}
+                    className="cursor-pointer flex items-center space-x-4 flex-grow"
+                >
+                    {/* Chapter Number/Indicator */}
+                    <div className="flex items-center space-x-3">
+                        <div className={`w-8 h-8 rounded-full border-2 flex items-center justify-center text-sm font-bold transition-all duration-200 ${
+                            isHovered 
+                                ? 'bg-gradient-to-r from-purple-500 to-blue-500 border-purple-500 text-white' 
+                                : 'bg-white border-gray-300 text-gray-600'
+                        }`}>
+                            {index + 1}
+                        </div>
+                        <FaBookOpen 
+                            className={`transition-colors duration-200 ${
+                                isHovered ? 'text-purple-500' : 'text-gray-400'
+                            }`} 
+                            size={16} 
+                        />
+                    </div>
+                    
+                    <div className="flex-1 min-w-0">
+                        <h3 className={`font-medium text-lg truncate transition-colors duration-200 ${
+                            isHovered ? 'text-purple-600' : 'text-gray-800'
+                        }`}>
+                            {chapter.name}
+                        </h3>
+                        {isPending && (
+                            <div className="flex items-center gap-1 mt-1">
+                                <div className="w-1 h-1 bg-yellow-500 rounded-full animate-pulse"></div>
+                                <span className="text-xs text-yellow-600">Syncing...</span>
+                            </div>
+                        )}
+                    </div>
+                </div>
+
+                {/* Action Buttons */}
+                {isOnline && !isRenaming && (
+                    <div className={`flex items-center space-x-2 transition-all duration-200 ${
+                        isHovered ? 'opacity-100 transform scale-100' : 'opacity-0 transform scale-95'
+                    }`}>
+                        <button 
+                            onClick={handleRenameClick}
+                            disabled={!isOnline} 
+                            className="p-2 text-gray-500 hover:text-purple-600 rounded-full hover:bg-purple-50 disabled:opacity-50 transition-all duration-200 transform hover:scale-110"
+                        >
+                            <MdEdit size={18} />
+                        </button>
+                        <button 
+                            onClick={handleDeleteClick}
+                            disabled={!isOnline} 
+                            className="p-2 text-gray-500 hover:text-red-600 rounded-full hover:bg-red-50 disabled:opacity-50 transition-all duration-200 transform hover:scale-110"
+                        >
+                            <MdDelete size={18} />
+                        </button>
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+});
+
 const NoteChapters = ({ setHeaderTitle }) => {
     const { subjectId } = useParams();
     const navigate = useNavigate();
@@ -39,13 +297,13 @@ const NoteChapters = ({ setHeaderTitle }) => {
     });
     
     // UI state
-    const [newChapterName, setNewChapterName] = useState('');
     const [isAdding, setIsAdding] = useState(false);
     const [renamingChapterId, setRenamingChapterId] = useState(null);
     const [renamingChapterName, setRenamingChapterName] = useState('');
     const [searchTerm, setSearchTerm] = useState('');
     const [hoveredChapter, setHoveredChapter] = useState(null);
 
+    // Memoized filtered chapters to prevent recalculation
     const filteredChapters = useMemo(() => {
         if (!chapters) return [];
         if (!searchTerm.trim()) return chapters;
@@ -54,16 +312,15 @@ const NoteChapters = ({ setHeaderTitle }) => {
         );
     }, [chapters, searchTerm]);
 
-    const handleSaveChapter = useCallback(async () => {
-        if (newChapterName.trim() === '') return;
+    // Memoized handlers to prevent re-renders
+    const handleAddChapter = useCallback(async (name) => {
         try {
-            await addItem({ name: newChapterName.trim() });
-            setNewChapterName('');
+            await addItem({ name });
             setIsAdding(false);
         } catch (error) {
             console.error('Failed to add chapter:', error);
         }
-    }, [newChapterName, addItem]);
+    }, [addItem]);
 
     const handleDelete = useCallback(async (chapterId) => {
         if (window.confirm('Are you sure you want to delete this chapter? This action cannot be undone.')) {
@@ -95,97 +352,33 @@ const NoteChapters = ({ setHeaderTitle }) => {
         if (e.key === 'Enter') {
             action();
         } else if (e.key === 'Escape') {
-            if (isAdding) {
-                setIsAdding(false);
-                setNewChapterName('');
-            }
             if (renamingChapterId) {
                 setRenamingChapterId(null);
                 setRenamingChapterName('');
             }
         }
-    }, [isAdding, renamingChapterId]);
+    }, [renamingChapterId]);
 
     const clearSearch = useCallback(() => {
         setSearchTerm('');
     }, []);
 
-    const ChaptersSkeleton = () => (
-        <div className="space-y-3">
-            {Array(5).fill().map((_, index) => (
-                <div key={index} className="p-5 bg-white rounded-xl border border-gray-100 animate-pulse">
-                    <div className="flex items-center space-x-4">
-                        <div className="w-3 h-3 bg-gray-200 rounded-full"></div>
-                        <div className="w-5 h-5 bg-gray-200 rounded"></div>
-                        <div className="h-6 bg-gray-200 rounded flex-1 max-w-sm"></div>
-                    </div>
-                </div>
-            ))}
-        </div>
-    );
+    const handleSearchChange = useCallback((e) => {
+        setSearchTerm(e.target.value);
+    }, []);
 
-    const EmptyState = () => (
-        <div className="text-center py-20">
-            <div className="relative">
-                <HiOutlineCollection size={80} className="mx-auto text-gray-300" />
-                <div className="absolute -top-2 -right-2 w-6 h-6 bg-purple-500 rounded-full opacity-20 animate-ping"></div>
-            </div>
-            <h3 className="text-2xl font-bold text-gray-700 mt-6">
-                {searchTerm ? 'No Matching Chapters' : 'No Chapters Yet'}
-            </h3>
-            <p className="text-gray-500 mt-2 max-w-md mx-auto">
-                {searchTerm 
-                    ? `No chapters found matching "${searchTerm}". Try a different search term.`
-                    : "Start organizing your content by creating the first chapter."
-                }
-            </p>
-            {searchTerm && (
-                <button
-                    onClick={clearSearch}
-                    className="mt-4 px-4 py-2 text-purple-600 hover:text-purple-700 font-medium transition-colors"
-                >
-                    Clear Search
-                </button>
-            )}
-        </div>
-    );
+    const handleCancelAdd = useCallback(() => {
+        setIsAdding(false);
+    }, []);
 
-    const AddChapterForm = () => (
-        <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6 mb-6">
-            <h3 className="text-lg font-semibold text-gray-800 mb-4">Add New Chapter</h3>
-            <div className="flex gap-3">
-                <div className="flex-1">
-                    <input
-                        type="text"
-                        value={newChapterName}
-                        onChange={(e) => setNewChapterName(e.target.value)}
-                        onKeyPress={(e) => handleKeyPress(e, handleSaveChapter)}
-                        placeholder="Enter chapter name..."
-                        className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none transition-all"
-                        autoFocus
-                    />
-                </div>
-                <button
-                    onClick={handleSaveChapter}
-                    disabled={!newChapterName.trim()}
-                    className="px-4 py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
-                >
-                    <MdCheck size={18} />
-                    Save
-                </button>
-                <button
-                    onClick={() => {
-                        setIsAdding(false);
-                        setNewChapterName('');
-                    }}
-                    className="px-4 py-2.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors flex items-center gap-2"
-                >
-                    <FaTimes size={14} />
-                    Cancel
-                </button>
-            </div>
-        </div>
-    );
+    const handleCancelRename = useCallback(() => {
+        setRenamingChapterId(null);
+        setRenamingChapterName('');
+    }, []);
+
+    const handleRenamingValueChange = useCallback((value) => {
+        setRenamingChapterName(value);
+    }, []);
 
     // Guard clause to prevent rendering crashes
     if (!chapters) {
@@ -246,7 +439,7 @@ const NoteChapters = ({ setHeaderTitle }) => {
                         <input
                             type="text"
                             value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
+                            onChange={handleSearchChange}
                             placeholder="Search chapters..."
                             className="w-full pl-12 pr-12 py-3 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none transition-all shadow-sm"
                         />
@@ -262,7 +455,13 @@ const NoteChapters = ({ setHeaderTitle }) => {
                 )}
 
                 {/* Add Chapter Form */}
-                {isAdding && <AddChapterForm />}
+                {isAdding && (
+                    <AddChapterForm 
+                        onSave={handleAddChapter}
+                        onCancel={handleCancelAdd}
+                        isOnline={isOnline}
+                    />
+                )}
 
                 {/* Chapters List */}
                 <div className="mt-6">
@@ -282,12 +481,9 @@ const NoteChapters = ({ setHeaderTitle }) => {
                                     onDelete={handleDelete}
                                     isRenaming={renamingChapterId === chapter.id}
                                     renamingValue={renamingChapterName}
-                                    setRenamingValue={setRenamingChapterName}
+                                    setRenamingValue={handleRenamingValueChange}
                                     onSaveRename={handleSaveRename}
-                                    onCancelRename={() => {
-                                        setRenamingChapterId(null);
-                                        setRenamingChapterName('');
-                                    }}
+                                    onCancelRename={handleCancelRename}
                                     handleKeyPress={handleKeyPress}
                                     hoveredChapter={hoveredChapter}
                                     setHoveredChapter={setHoveredChapter}
@@ -295,145 +491,9 @@ const NoteChapters = ({ setHeaderTitle }) => {
                             ))}
                         </div>
                     ) : (
-                        <EmptyState />
+                        <EmptyState searchTerm={searchTerm} clearSearch={clearSearch} />
                     )}
                 </div>
-            </div>
-        </div>
-    );
-};
-
-const ChapterItem = ({ 
-    chapter, 
-    index, 
-    subjectId, 
-    isOnline, 
-    onNavigate, 
-    onRename, 
-    onDelete, 
-    isRenaming, 
-    renamingValue, 
-    setRenamingValue, 
-    onSaveRename, 
-    onCancelRename, 
-    handleKeyPress,
-    hoveredChapter,
-    setHoveredChapter
-}) => {
-    const isPending = chapter._metadata?.hasPendingWrites;
-    const isHovered = hoveredChapter === chapter.id;
-
-    return (
-        <div 
-            className={`group relative bg-white/80 backdrop-blur-sm rounded-xl border transition-all duration-300 ${
-                isPending 
-                    ? 'opacity-60 border-yellow-200 shadow-yellow-100' 
-                    : isHovered
-                        ? 'border-purple-300 shadow-purple-100 shadow-lg transform translate-x-1'
-                        : 'border-gray-100 shadow-sm hover:shadow-lg hover:border-gray-200'
-            }`}
-            onMouseEnter={() => setHoveredChapter(chapter.id)}
-            onMouseLeave={() => setHoveredChapter(null)}
-        >
-            {/* Rename Form Overlay */}
-            {isRenaming && (
-                <div className="absolute inset-0 bg-white rounded-xl border-2 border-purple-500 shadow-lg z-10 p-4">
-                    <div className="flex flex-col gap-3 h-full justify-center">
-                        <label className="text-sm font-medium text-gray-700">Rename Chapter</label>
-                        <input
-                            type="text"
-                            value={renamingValue}
-                            onChange={(e) => setRenamingValue(e.target.value)}
-                            onKeyPress={(e) => handleKeyPress(e, onSaveRename)}
-                            className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
-                            autoFocus
-                        />
-                        <div className="flex gap-2">
-                            <button
-                                onClick={onSaveRename}
-                                disabled={!renamingValue.trim()}
-                                className="flex-1 px-3 py-2 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 disabled:opacity-50 transition-colors flex items-center justify-center gap-1"
-                            >
-                                <MdCheck size={16} />
-                                Save
-                            </button>
-                            <button
-                                onClick={onCancelRename}
-                                className="flex-1 px-3 py-2 bg-gray-100 text-gray-700 text-sm rounded-lg hover:bg-gray-200 transition-colors flex items-center justify-center gap-1"
-                            >
-                                <FaTimes size={12} />
-                                Cancel
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* Main Content */}
-            <div className="flex justify-between items-center p-5">
-                <div 
-                    onClick={() => !isRenaming && onNavigate(`/notes/${subjectId}/${chapter.id}`)} 
-                    className="cursor-pointer flex items-center space-x-4 flex-grow"
-                >
-                    {/* Chapter Number/Indicator */}
-                    <div className="flex items-center space-x-3">
-                        <div className={`w-8 h-8 rounded-full border-2 flex items-center justify-center text-sm font-bold transition-all duration-200 ${
-                            isHovered 
-                                ? 'bg-gradient-to-r from-purple-500 to-blue-500 border-purple-500 text-white' 
-                                : 'bg-white border-gray-300 text-gray-600'
-                        }`}>
-                            {index + 1}
-                        </div>
-                        <FaBookOpen 
-                            className={`transition-colors duration-200 ${
-                                isHovered ? 'text-purple-500' : 'text-gray-400'
-                            }`} 
-                            size={16} 
-                        />
-                    </div>
-                    
-                    <div className="flex-1 min-w-0">
-                        <h3 className={`font-medium text-lg truncate transition-colors duration-200 ${
-                            isHovered ? 'text-purple-600' : 'text-gray-800'
-                        }`}>
-                            {chapter.name}
-                        </h3>
-                        {isPending && (
-                            <div className="flex items-center gap-1 mt-1">
-                                <div className="w-1 h-1 bg-yellow-500 rounded-full animate-pulse"></div>
-                                <span className="text-xs text-yellow-600">Syncing...</span>
-                            </div>
-                        )}
-                    </div>
-                </div>
-
-                {/* Action Buttons */}
-                {isOnline && !isRenaming && (
-                    <div className={`flex items-center space-x-2 transition-all duration-200 ${
-                        isHovered ? 'opacity-100 transform scale-100' : 'opacity-0 transform scale-95'
-                    }`}>
-                        <button 
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                onRename(chapter);
-                            }} 
-                            disabled={!isOnline} 
-                            className="p-2 text-gray-500 hover:text-purple-600 rounded-full hover:bg-purple-50 disabled:opacity-50 transition-all duration-200 transform hover:scale-110"
-                        >
-                            <MdEdit size={18} />
-                        </button>
-                        <button 
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                onDelete(chapter.id);
-                            }} 
-                            disabled={!isOnline} 
-                            className="p-2 text-gray-500 hover:text-red-600 rounded-full hover:bg-red-50 disabled:opacity-50 transition-all duration-200 transform hover:scale-110"
-                        >
-                            <MdDelete size={18} />
-                        </button>
-                    </div>
-                )}
             </div>
         </div>
     );
