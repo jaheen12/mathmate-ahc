@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import Skeleton from 'react-loading-skeleton';
-import 'react-loading-skeleton/dist/skeleton.css'; // Make sure to import skeleton styles
+import 'react-loading-skeleton/dist/skeleton.css';
 import { 
     IoArrowBack, 
     IoSaveOutline, 
@@ -14,10 +14,12 @@ import {
     IoChevronDown,
     IoCheckmarkCircleOutline,
     IoAlertCircleOutline,
-    IoBookmarksOutline // Icon for Chapter Name
+    IoBookmarksOutline
 } from "react-icons/io5";
 import { useFirestoreDocument } from '../hooks/useFirestoreDocument';
 import NetworkStatus from '../components/NetworkStatus';
+import { doc, updateDoc } from 'firebase/firestore'; // Import updateDoc for saving
+import { db } from '../firebaseConfig'; // Import your db instance
 
 // --- Helper Component: ClassCard ---
 const ClassCard = React.memo(({ 
@@ -139,18 +141,21 @@ const ScheduleEditor = () => {
     const { 
         data: scheduleDoc, 
         loading: scheduleLoading, 
-        updateDocument: updateSchedule,
         isOnline,
         fromCache: scheduleFromCache,
         hasPendingWrites: scheduleHasPending
-    } = useFirestoreDocument(['schedules', 'first_year']);
+    } = useFirestoreDocument(['schedules', 'first_year'], {
+        cacheFirst: true // Enable instant loading from cache
+    });
     
     const { 
         data: timeSlotsDoc, 
         loading: timeSlotsLoading,
         fromCache: timeSlotsFromCache,
         hasPendingWrites: timeSlotsHasPending
-    } = useFirestoreDocument(['time_slots', 'default_periods']);
+    } = useFirestoreDocument(['time_slots', 'default_periods'], {
+        cacheFirst: true // Enable instant loading from cache
+    });
     
     const [editorDays, setEditorDays] = useState({});
     const [isSaving, setIsSaving] = useState(false);
@@ -160,10 +165,10 @@ const ScheduleEditor = () => {
     const navigate = useNavigate();
     const daysOfWeek = useMemo(() => ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday"], []);
     
-    const loading = (scheduleLoading && !scheduleDoc) || (timeSlotsLoading && !timeSlotsDoc);
+    const timeSlots = timeSlotsDoc?.periods || [];
     const fromCache = scheduleFromCache || timeSlotsFromCache;
     const hasPendingWrites = scheduleHasPending || timeSlotsHasPending;
-    const timeSlots = timeSlotsDoc?.periods || [];
+    const isLoading = scheduleLoading || timeSlotsLoading;
 
     const dayColors = useMemo(() => ({
         Sunday: { bg: "from-orange-100 to-orange-50", border: "border-orange-200", text: "text-orange-700" },
@@ -204,7 +209,7 @@ const ScheduleEditor = () => {
     }, [editorDays]);
 
     const handleClassChange = useCallback((day, index, updatedClass) => {
-        setEditorDays(prev => ({...prev, [day]: prev[day].map((c, i) => i === index ? updatedClass : c)}));
+        setEditorDays(prev => ({...prev, [day]: (prev[day] || []).map((c, i) => i === index ? updatedClass : c)}));
     }, []);
 
     const addClass = useCallback((day) => {
@@ -216,7 +221,7 @@ const ScheduleEditor = () => {
     }, []);
 
     const removeClass = useCallback((day, index) => {
-        setEditorDays(prev => ({...prev, [day]: prev[day].filter((_, i) => i !== index)}));
+        setEditorDays(prev => ({...prev, [day]: (prev[day] || []).filter((_, i) => i !== index)}));
     }, []);
 
     const toggleDay = useCallback((day) => setExpandedDays(prev => ({ ...prev, [day]: !prev[day] })), []);
@@ -226,13 +231,17 @@ const ScheduleEditor = () => {
     const handleSave = useCallback(async () => {
         setIsSaving(true);
         setSaveSuccess(false);
-        const result = await updateSchedule({ days: editorDays });
-        if (result.success) {
+        const docRef = doc(db, 'schedules', 'first_year');
+        try {
+            await updateDoc(docRef, { days: editorDays });
             setSaveSuccess(true);
             setTimeout(() => navigate('/schedule'), 1200);
+        } catch (error) {
+            console.error("Failed to save schedule:", error);
+        } finally {
+            setIsSaving(false);
         }
-        setIsSaving(false);
-    }, [editorDays, updateSchedule, navigate]);
+    }, [editorDays, navigate]);
 
     const MobileEditorSkeleton = () => (
         <div className="space-y-4">
@@ -249,7 +258,7 @@ const ScheduleEditor = () => {
         </div>
     );
 
-    if (loading) {
+    if (isLoading && !scheduleDoc && !timeSlotsDoc) {
         return (
             <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50/20 px-4 py-2">
                 <MobileEditorSkeleton />

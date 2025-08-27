@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
 import Skeleton from 'react-loading-skeleton';
-import 'react-loading-skeleton/dist/skeleton.css'; // Make sure to import skeleton styles
+import 'react-loading-skeleton/dist/skeleton.css';
 import { 
     IoCreateOutline, 
     IoTimeOutline, 
@@ -13,12 +13,15 @@ import {
     IoBookOutline,
     IoCheckmarkCircleOutline,
     IoCloudOfflineOutline,
-    IoBookmarksOutline // Icon for Chapters/Topics
+    IoBookmarksOutline,
+    IoRefreshOutline // Icon for the new refresh button
 } from "react-icons/io5"; 
 import { useFirestoreDocument } from '../hooks/useFirestoreDocument';
 import NetworkStatus from '../components/NetworkStatus';
 import ScheduleView from '../components/ScheduleView';
 import TimeSlotsEditorModal from '../components/TimeSlotsEditorModal';
+import { doc, updateDoc } from 'firebase/firestore'; // Import updateDoc for saving
+import { db } from '../firebaseConfig'; // Import your db instance
 
 // --- Helper Component: MobileActionButton ---
 const MobileActionButton = React.memo(({ onClick, to, icon: IconComponent, children, variant = 'secondary', fullWidth = false, disabled = false }) => {
@@ -49,13 +52,13 @@ const MobileActionButton = React.memo(({ onClick, to, icon: IconComponent, child
 });
 
 // --- Helper Component: StatCard ---
-const StatCard = React.memo(({ icon: IconComponent, title, value, subtitle, color = "blue" }) => {
+const StatCard = React.memo(({ icon: IconComponent, title, value, color = "blue" }) => {
     const colorClasses = {
         blue: "bg-blue-50 border-blue-100 text-blue-600",
         green: "bg-green-50 border-green-100 text-green-600",
         purple: "bg-purple-50 border-purple-100 text-purple-600",
         orange: "bg-orange-50 border-orange-100 text-orange-600",
-        indigo: "bg-indigo-50 border-indigo-100 text-indigo-600" // Color for Topics stat
+        indigo: "bg-indigo-50 border-indigo-100 text-indigo-600"
     };
 
     return (
@@ -65,7 +68,6 @@ const StatCard = React.memo(({ icon: IconComponent, title, value, subtitle, colo
                 <div className="flex-1">
                     <p className="text-2xl font-bold text-gray-900">{value}</p>
                     <p className="text-sm text-gray-600 font-medium">{title}</p>
-                    {subtitle && <p className="text-xs text-gray-500 mt-1">{subtitle}</p>}
                 </div>
             </div>
         </div>
@@ -119,16 +121,23 @@ const Schedule = ({ setHeaderTitle }) => {
         loading: scheduleLoading,
         isOnline,
         fromCache: scheduleFromCache,
-        hasPendingWrites: scheduleHasPending
-    } = useFirestoreDocument(['schedules', 'first_year']);
+        hasPendingWrites: scheduleHasPending,
+        refresh: refreshSchedule
+    } = useFirestoreDocument(['schedules', 'first_year'], {
+        cacheFirst: true,
+        backgroundSyncInterval: 60000
+    });
     
     const { 
         data: timeSlotsDoc, 
         loading: timeSlotsLoading, 
-        updateDocument: updateTimeSlots,
         fromCache: timeSlotsFromCache,
-        hasPendingWrites: timeSlotsHasPending
-    } = useFirestoreDocument(['time_slots', 'default_periods']);
+        hasPendingWrites: timeSlotsHasPending,
+        refresh: refreshTimeSlots
+    } = useFirestoreDocument(['time_slots', 'default_periods'], {
+        cacheFirst: true,
+        backgroundSyncInterval: 60000
+    });
     
     useEffect(() => {
         setHeaderTitle('Class Schedule');
@@ -136,11 +145,13 @@ const Schedule = ({ setHeaderTitle }) => {
 
     const { currentUser } = useAuth();
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [refreshing, setRefreshing] = useState(false);
 
     const scheduleDays = useMemo(() => scheduleDoc?.days || {}, [scheduleDoc]);
     const timeSlots = useMemo(() => timeSlotsDoc?.periods || [], [timeSlotsDoc]);
     const fromCache = scheduleFromCache || timeSlotsFromCache;
     const hasPendingWrites = scheduleHasPending || timeSlotsHasPending;
+    const isLoading = scheduleLoading || timeSlotsLoading;
 
     const scheduleStats = useMemo(() => {
         const allClasses = Object.values(scheduleDays).flat();
@@ -159,7 +170,7 @@ const Schedule = ({ setHeaderTitle }) => {
         };
     }, [scheduleDays, timeSlots]);
 
-    const handleSaveTimeSlots = useCallback((newTimeSlots) => {
+    const handleSaveTimeSlots = useCallback(async (newTimeSlots) => {
         const timeToMinutes = (timeStr) => {
             if (!timeStr) return 0;
             const [time, ampm] = timeStr.split(' ');
@@ -169,14 +180,44 @@ const Schedule = ({ setHeaderTitle }) => {
             return hours * 60 + minutes;
         };
         const sortedTimeSlots = [...newTimeSlots].sort((a, b) => timeToMinutes(a.split('-')[0]) - timeToMinutes(b.split('-')[0]));
-        updateTimeSlots({ periods: sortedTimeSlots });
-    }, [updateTimeSlots]);
+        
+        const docRef = doc(db, 'time_slots', 'default_periods');
+        try {
+            await updateDoc(docRef, { periods: sortedTimeSlots });
+        } catch (error) {
+            console.error("Failed to save time slots:", error);
+        }
+    }, []);
+
+    const handleRefresh = useCallback(async () => {
+        if (!isOnline || refreshing) return;
+        
+        setRefreshing(true);
+        try {
+          await Promise.all([
+            refreshSchedule(),
+            refreshTimeSlots()
+          ]);
+        } catch (error) {
+          console.error('Schedule refresh failed:', error);
+        } finally {
+          setTimeout(() => setRefreshing(false), 500);
+        }
+    }, [isOnline, refreshing, refreshSchedule, refreshTimeSlots]);
 
     const handleOpenModal = useCallback(() => setIsModalOpen(true), []);
     const handleCloseModal = useCallback(() => setIsModalOpen(false), []);
 
-    if (scheduleLoading || timeSlotsLoading || !scheduleDoc || !timeSlotsDoc) {
+    if (isLoading && !scheduleDoc && !timeSlotsDoc) {
         return <MobileSkeletonLoader />;
+    }
+    if (!isLoading && (!scheduleDoc || !timeSlotsDoc)) {
+         return (
+            <div className="p-8 text-center">
+                <h2 className="text-xl font-semibold mb-2">System Not Ready</h2>
+                <p className="text-gray-600">The class schedule has not been set up by an administrator yet.</p>
+            </div>
+        );
     }
 
     return (
@@ -187,13 +228,26 @@ const Schedule = ({ setHeaderTitle }) => {
                      <p className="text-sm text-gray-600">Manage your class timetable, periods, and topics.</p>
                 </div>
                 {currentUser && (
-                    <div className="flex gap-3 mb-4">
-                        <MobileActionButton onClick={handleOpenModal} icon={IoTimeOutline} fullWidth disabled={!isOnline}>
-                            {isOnline ? 'Edit Periods' : 'Offline'}
-                        </MobileActionButton>
-                        <MobileActionButton to="/schedule-editor" icon={IoCreateOutline} variant="primary" fullWidth disabled={!isOnline}>
-                            {isOnline ? 'Edit Schedule' : 'Offline'}
-                        </MobileActionButton>
+                    <div className="flex items-center gap-3 mb-4">
+                        <div className="flex-1 grid grid-cols-2 gap-3">
+                             <MobileActionButton onClick={handleOpenModal} icon={IoTimeOutline} fullWidth disabled={!isOnline}>
+                                {isOnline ? 'Edit Periods' : 'Offline'}
+                            </MobileActionButton>
+                            <MobileActionButton to="/schedule-editor" icon={IoCreateOutline} variant="primary" fullWidth disabled={!isOnline}>
+                                {isOnline ? 'Edit Schedule' : 'Offline'}
+                            </MobileActionButton>
+                        </div>
+                        <button
+                            onClick={handleRefresh}
+                            disabled={refreshing || !isOnline}
+                            className="bg-white p-4 rounded-xl border border-gray-200 hover:bg-gray-50 transition-all duration-200 disabled:opacity-50 hover:scale-105 active:scale-95"
+                            aria-label="Refresh Schedule"
+                        >
+                            <IoRefreshOutline 
+                                size={20} 
+                                className={`text-gray-600 transition-transform duration-300 ${refreshing ? 'animate-spin' : ''}`} 
+                            />
+                        </button>
                     </div>
                 )}
                 <div className="mb-4">
