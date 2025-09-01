@@ -128,8 +128,7 @@ const QuickActionCard = ({ icon: Icon, title, description, to, color = "blue" })
 
 const Dashboard = ({ setHeaderTitle }) => {
   // --- STATE MANAGEMENT ---
-  const [upcomingClasses, setUpcomingClasses] = useState([]);
-  const [upcomingDay, setUpcomingDay] = useState('');
+  const [currentTime, setCurrentTime] = useState(new Date());
   const [refreshing, setRefreshing] = useState(false);
   const [mounted, setMounted] = useState(false);
   const navigate = useNavigate();
@@ -162,17 +161,20 @@ const Dashboard = ({ setHeaderTitle }) => {
   
   const latestNotice = latestNotices?.[0];
 
+  // --- REAL-TIME CLOCK UPDATE ---
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 30000); // Update every 30 seconds for better performance
+
+    return () => clearInterval(timer);
+  }, []);
+
   // --- DERIVED STATE & EFFECTS ---
   useEffect(() => { 
     setHeaderTitle('Dashboard'); 
     setMounted(true);
   }, [setHeaderTitle]);
-
-  useEffect(() => {
-    if (scheduleDoc) {
-      getUpcomingClasses(scheduleDoc.days);
-    }
-  }, [scheduleDoc]);
 
   // Optimized refresh with haptic feedback simulation
   const handleRefresh = useCallback(async () => {
@@ -191,94 +193,144 @@ const Dashboard = ({ setHeaderTitle }) => {
     }
   }, [isOnline, refreshing, refreshSchedule, refreshNotices]);
   
-  // --- OPTIMIZED HELPERS ---
-  const getUpcomingClasses = useCallback((scheduleDays) => {
-    const daysOfWeek = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
-    const now = new Date();
-    const todayIndex = now.getDay();
-    const currentTime = now.getHours() * 100 + now.getMinutes();
+  // --- OPTIMIZED TIME PARSING HELPER ---
+  const parseTimeToMinutes = useCallback((timeStr) => {
+    if (!timeStr) return 0;
     
-    const parseTime = (timeStr) => {
-      if (!timeStr) return 0;
-      const period = timeStr.slice(-2).toUpperCase();
-      const timePart = timeStr.slice(0, -2).trim();
-      let [hours, minutes] = timePart.split(':').map(Number);
-      if (period === 'PM' && hours !== 12) hours += 12;
-      if (period === 'AM' && hours === 12) hours = 0;
-      return hours * 100 + (minutes || 0);
-    };
-
-    const todayName = daysOfWeek[todayIndex];
-    const todayClasses = scheduleDays?.[todayName] || [];
-    const remainingToday = todayClasses.filter(c => parseTime(c.time) > currentTime);
+    // Handle timeSlot format like "9:45 AM-10:30 AM" - extract start time
+    let cleanTime = timeStr.toString().trim();
     
-    if (remainingToday.length > 0) {
-      setUpcomingClasses(remainingToday);
-      setUpcomingDay('Today');
-      return;
+    // If it contains a dash (time range), take the start time
+    if (cleanTime.includes('-')) {
+      cleanTime = cleanTime.split('-')[0].trim();
     }
     
+    console.log('Parsing time:', cleanTime);
+    
+    // Check if it has AM/PM
+    const hasAmPm = /AM|PM/i.test(cleanTime);
+    
+    if (hasAmPm) {
+      const period = cleanTime.slice(-2).toUpperCase();
+      const timePart = cleanTime.slice(0, -2).trim();
+      let [hours, minutes] = timePart.split(':').map(Number);
+      
+      if (period === 'PM' && hours !== 12) hours += 12;
+      if (period === 'AM' && hours === 12) hours = 0;
+      
+      return hours * 60 + (minutes || 0);
+    } else {
+      // Handle 24-hour format or just hours
+      const parts = cleanTime.split(':');
+      const hours = parseInt(parts[0]) || 0;
+      const minutes = parseInt(parts[1]) || 0;
+      
+      return hours * 60 + minutes;
+    }
+  }, []);
+
+  // --- ENHANCED UPCOMING CLASSES LOGIC ---
+  const upcomingClassesData = useMemo(() => {
+    if (!scheduleDoc?.days) return { classes: [], day: '', nextClassCountdown: null };
+
+    const daysOfWeek = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+    const currentTimeMinutes = currentTime.getHours() * 60 + currentTime.getMinutes();
+    const todayIndex = currentTime.getDay();
+    const todayName = daysOfWeek[todayIndex];
+    
+    // Debug logs
+    console.log('Current time:', currentTime.toLocaleTimeString());
+    console.log('Current time minutes:', currentTimeMinutes);
+    console.log('Today:', todayName);
+    console.log('Schedule data for today:', scheduleDoc.days[todayName]);
+    
+    // Get today's remaining classes
+    const todayClasses = scheduleDoc.days[todayName] || [];
+    console.log('Today classes:', todayClasses);
+    
+    // Let's see the actual structure of the first class
+    if (todayClasses.length > 0) {
+      console.log('First class structure:', JSON.stringify(todayClasses[0], null, 2));
+    }
+    
+    const remainingTodayClasses = todayClasses
+      .filter(classInfo => {
+        // Use timeSlot instead of time
+        const classTimeMinutes = parseTimeToMinutes(classInfo.timeSlot);
+        console.log(`Class: ${classInfo.subject} at ${classInfo.timeSlot} (${classTimeMinutes} minutes) vs current (${currentTimeMinutes} minutes)`);
+        return classTimeMinutes > currentTimeMinutes;
+      })
+      .sort((a, b) => parseTimeToMinutes(a.timeSlot) - parseTimeToMinutes(b.timeSlot));
+    
+    console.log('Remaining today classes:', remainingTodayClasses);
+    
+    // If we have remaining classes today, return them
+    if (remainingTodayClasses.length > 0) {
+      const nextClass = remainingTodayClasses[0];
+      const nextClassMinutes = parseTimeToMinutes(nextClass.time);
+      const minutesUntilNext = nextClassMinutes - currentTimeMinutes;
+      
+      let countdown = null;
+      if (minutesUntilNext > 0) {
+        const hours = Math.floor(minutesUntilNext / 60);
+        const mins = minutesUntilNext % 60;
+        countdown = hours > 0 ? `${hours}h ${mins}m` : `${mins}m`;
+      }
+      
+      return {
+        classes: remainingTodayClasses,
+        day: 'Today',
+        nextClassCountdown: countdown
+      };
+    }
+    
+    console.log('No remaining classes today, looking for next day...');
+    
+    // Find next day with classes
     for (let i = 1; i <= 7; i++) {
       const nextDayIndex = (todayIndex + i) % 7;
       const nextDayName = daysOfWeek[nextDayIndex];
-      const nextDayClasses = scheduleDays?.[nextDayName] || [];
+      const nextDayClasses = scheduleDoc.days[nextDayName] || [];
+      
+      console.log(`Checking ${nextDayName}:`, nextDayClasses);
+      
       if (nextDayClasses.length > 0) {
-        setUpcomingClasses(nextDayClasses);
-        setUpcomingDay(nextDayName);
-        return;
+        const sortedClasses = [...nextDayClasses].sort((a, b) => 
+          parseTimeToMinutes(a.timeSlot) - parseTimeToMinutes(b.timeSlot)
+        );
+        
+        return {
+          classes: sortedClasses,
+          day: nextDayName,
+          nextClassCountdown: null
+        };
       }
     }
-    setUpcomingClasses([]);
-    setUpcomingDay('');
-  }, []);
+    
+    return { classes: [], day: '', nextClassCountdown: null };
+  }, [scheduleDoc, currentTime, parseTimeToMinutes]);
 
-  // Memoized time calculations
+  // Memoized time calculations for header
   const { timeString, dateString } = useMemo(() => {
-    const now = new Date();
     return {
-      timeString: now.toLocaleTimeString('en-US', {
+      timeString: currentTime.toLocaleTimeString('en-US', {
         hour: 'numeric',
         minute: '2-digit',
         hour12: true
       }),
-      dateString: now.toLocaleDateString('en-US', {
+      dateString: currentTime.toLocaleDateString('en-US', {
         weekday: 'long',
         month: 'long',
         day: 'numeric'
       })
     };
-  }, []); // Only calculate once on mount
+  }, [currentTime]);
 
   const attendancePercentage = useMemo(() => 
     attendanceData?.length ? 
     Math.round((attendanceData.filter(r => r.status === 'present').length / attendanceData.length) * 100) : 0,
     [attendanceData]
   );
-
-  const getNextClassCountdown = useMemo(() => {
-    if (upcomingClasses.length === 0 || upcomingDay !== 'Today') return null;
-    
-    const nextClass = upcomingClasses[0];
-    const now = new Date();
-    const [time, period] = nextClass.time.split(/(?=[AP]M)/);
-    const [hours, minutes] = time.split(':').map(Number);
-    let classHours = hours;
-    
-    if (period === 'PM' && hours !== 12) classHours += 12;
-    if (period === 'AM' && hours === 12) classHours = 0;
-    
-    const classTime = new Date(now);
-    classTime.setHours(classHours, minutes || 0, 0, 0);
-    
-    const diff = classTime - now;
-    if (diff <= 0) return null;
-    
-    const hoursLeft = Math.floor(diff / (1000 * 60 * 60));
-    const minutesLeft = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-    
-    if (hoursLeft > 0) return `${hoursLeft}h ${minutesLeft}m`;
-    return `${minutesLeft}m`;
-  }, [upcomingClasses, upcomingDay]);
   
   // --- RENDER LOGIC ---
   
@@ -298,10 +350,10 @@ const Dashboard = ({ setHeaderTitle }) => {
               Welcome Back! 👋
             </h1>
             <p className="text-blue-100 text-sm font-medium">{dateString} • {timeString}</p>
-            {getNextClassCountdown && (
+            {upcomingClassesData.nextClassCountdown && (
               <div className="mt-2 inline-flex items-center bg-white/20 backdrop-blur-sm rounded-full px-3 py-1">
                 <IoTimeOutline size={16} className="text-white mr-2" />
-                <span className="text-white text-sm font-medium">Next class in {getNextClassCountdown}</span>
+                <span className="text-white text-sm font-medium">Next class in {upcomingClassesData.nextClassCountdown}</span>
               </div>
             )}
           </div>
@@ -331,39 +383,7 @@ const Dashboard = ({ setHeaderTitle }) => {
           hasPendingWrites={hasPendingWrites} 
         />
         
-        {/* Quick Actions Grid */}
-        <div className="grid grid-cols-2 gap-3">
-          <QuickActionCard
-            icon={IoCalendarOutline}
-            title="Schedule"
-            description="View timetable"
-            to="/schedule"
-            color="blue"
-          />
-          <QuickActionCard
-            icon={IoStatsChartOutline}
-            title="Attendance"
-            description="Track progress"
-            to="/attendance"
-            color="green"
-          />
-          <QuickActionCard
-            icon={IoMegaphoneOutline}
-            title="Notices"
-            description="Latest updates"
-            to="/notices"
-            color="purple"
-          />
-          <QuickActionCard
-            icon={IoBookOutline}
-            title="Resources"
-            description="Study materials"
-            to="/resources"
-            color="orange"
-          />
-        </div>
-        
-        {/* Enhanced Upcoming Classes Section */}
+        {/* Enhanced Upcoming Classes Section - Show All Classes */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden transition-all duration-200 hover:shadow-md">
           <div className="p-6">
             <div className="flex items-center justify-between mb-4">
@@ -371,8 +391,8 @@ const Dashboard = ({ setHeaderTitle }) => {
                 <IoCalendarOutline size={20} className="text-gray-600" />
                 <h2 className="text-lg font-bold text-gray-900">
                   Upcoming Classes 
-                  {upcomingDay && (
-                    <span className="text-sm font-normal text-gray-500 ml-1">• {upcomingDay}</span>
+                  {upcomingClassesData.day && (
+                    <span className="text-sm font-normal text-gray-500 ml-1">• {upcomingClassesData.day}</span>
                   )}
                 </h2>
               </div>
@@ -385,11 +405,11 @@ const Dashboard = ({ setHeaderTitle }) => {
               </Link>
             </div>
             
-            {upcomingClasses.length > 0 ? (
+            {upcomingClassesData.classes.length > 0 ? (
               <div className="space-y-3">
-                {upcomingClasses.slice(0, 3).map((classInfo, index) => (
+                {upcomingClassesData.classes.map((classInfo, index) => (
                   <div 
-                    key={index} 
+                    key={`${classInfo.subject}-${classInfo.time}-${index}`}
                     className="flex items-center justify-between p-4 bg-gradient-to-r from-gray-50 to-gray-100 rounded-xl transition-all duration-200 hover:shadow-sm border border-gray-100"
                     style={{ animationDelay: `${index * 0.1}s` }}
                   >
@@ -403,22 +423,13 @@ const Dashboard = ({ setHeaderTitle }) => {
                       </div>
                     </div>
                     <div className="text-right">
-                      <p className="font-semibold text-gray-900">{classInfo.time}</p>
-                      {upcomingDay === 'Today' && index === 0 && getNextClassCountdown && (
-                        <p className="text-xs text-blue-600 font-medium">in {getNextClassCountdown}</p>
+                      <p className="font-semibold text-gray-900">{classInfo.timeSlot}</p>
+                      {upcomingClassesData.day === 'Today' && index === 0 && upcomingClassesData.nextClassCountdown && (
+                        <p className="text-xs text-blue-600 font-medium">in {upcomingClassesData.nextClassCountdown}</p>
                       )}
                     </div>
                   </div>
                 ))}
-                
-                {upcomingClasses.length > 3 && (
-                  <Link 
-                    to="/schedule"
-                    className="block text-center py-3 text-sm text-blue-600 hover:text-blue-700 font-medium transition-colors"
-                  >
-                    +{upcomingClasses.length - 3} more classes
-                  </Link>
-                )}
               </div>
             ) : (
               <div className="text-center py-8">
