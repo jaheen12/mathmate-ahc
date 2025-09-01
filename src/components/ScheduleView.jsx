@@ -147,6 +147,7 @@ const CurrentTimeIndicator = React.memo(({ currentTime, timeSlots }) => {
     
     if (!position) return null;
     
+    // Updated calculation to account for day column being part of table flow
     const leftOffset = 160 + (position.slotIndex * 192) + (position.progress * 192);
     
     return (
@@ -259,7 +260,8 @@ const ScheduleView = ({ scheduleDays }) => {
                             <Droppable droppableId="time-slots-header" direction="horizontal">
                                 {(provided) => (
                                     <div className="flex bg-gradient-to-r from-gray-800 to-gray-900 border-b-4 border-gray-700" {...provided.droppableProps} ref={provided.innerRef}>
-                                        <div className="w-40 p-6 font-bold text-white border-r-2 border-gray-600 text-center sticky left-0 bg-gradient-to-r from-gray-800 to-gray-900 z-30 shadow-xl">
+                                        {/* Day column header - removed sticky positioning */}
+                                        <div className="w-40 p-6 font-bold text-white border-r-2 border-gray-600 text-center bg-gradient-to-r from-gray-800 to-gray-900 shadow-xl">
                                             <IoTimeOutline className="w-6 h-6 mx-auto mb-2" />
                                             <div className="text-sm">Schedule</div>
                                         </div>
@@ -292,9 +294,11 @@ const ScheduleView = ({ scheduleDays }) => {
                                     return (
                                         <div key={day} className={`flex min-h-[140px] border-b-2 border-gray-100 last:border-b-0 transition-all duration-300
                                             ${isToday ? 'bg-gradient-to-r from-blue-50/50 via-purple-50/30 to-transparent' : 'hover:bg-gray-50/50'}`}>
-                                            <div className="w-40 p-4 border-r-2 border-gray-200 flex items-center justify-center sticky left-0 z-20 bg-white/95 backdrop-blur-sm">
+                                            {/* Day column - removed sticky positioning and z-index */}
+                                            <div className="w-40 p-4 border-r-2 border-gray-200 flex items-center justify-center bg-white">
                                                 <DayIndicator day={day} isToday={isToday} dayIndex={dayIndex} />
                                             </div>
+                                            {/* Time slot columns */}
                                             {timeSlots.map((time) => {
                                                 const classInfo = (scheduleDays[day] || []).find(c => c.timeSlot === time);
                                                 return (
