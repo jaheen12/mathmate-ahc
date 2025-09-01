@@ -15,6 +15,9 @@ const NoteItems = ({ setHeaderTitle }) => {
     const navigate = useNavigate();
     const { currentUser } = useAuth();
 
+    // Since only admin account exists, currentUser = admin
+    const isAdmin = !!currentUser;
+
     // Fetch parent chapter name for the header
     const { data: chapterDoc } = useFirestoreDocument(['official_notes', subjectId, 'chapters', chapterId]);
 
@@ -50,13 +53,14 @@ const NoteItems = ({ setHeaderTitle }) => {
 
     // --- Handlers ---
     const handleSaveItem = async () => {
-        if (newItemName.trim() === '') return;
+        if (newItemName.trim() === '' || !isAdmin) return;
         await addItem({ name: newItemName.trim(), content: '' }); // Add with empty content
         setNewItemName('');
         setIsAdding(false);
     };
 
     const handleDelete = async (itemId) => {
+        if (!isAdmin) return;
         await deleteItem(itemId, false);
     };
 
@@ -75,7 +79,12 @@ const NoteItems = ({ setHeaderTitle }) => {
         <div className="text-center py-20">
             <MdOutlineNoteAdd size={80} className="mx-auto text-gray-300" />
             <h3 className="text-2xl font-bold text-gray-700 mt-4">No Notes Yet</h3>
-            <p className="text-gray-500 mt-2">Create the first note in this chapter to get started.</p>
+            <p className="text-gray-500 mt-2">
+                {isAdmin 
+                    ? "Create the first note in this chapter to get started."
+                    : "Notes will appear here."
+                }
+            </p>
         </div>
     );
 
@@ -93,12 +102,19 @@ const NoteItems = ({ setHeaderTitle }) => {
             <div className="max-w-4xl mx-auto p-4 sm:p-6">
                 {/* Header */}
                 <div className="flex justify-between items-center mb-6">
-                     <Link to={`/notes/${subjectId}`} className="p-2 rounded-full hover:bg-gray-200 transition-colors">
+                    <Link to={`/notes/${subjectId}`} className="p-2 rounded-full hover:bg-gray-200 transition-colors">
                         <IoArrowBack size={24} />
                     </Link>
-                    <h1 className="text-2xl font-bold text-gray-800">{chapterDoc?.name || 'Notes'}</h1>
-                    {currentUser && (
-                        <button onClick={() => setIsAdding(true)} disabled={!isOnline} className="inline-flex items-center px-4 py-2.5 bg-blue-500 text-white font-semibold rounded-xl shadow-lg hover:bg-blue-600 disabled:opacity-50">
+                    <h1 className="text-2xl font-bold text-gray-800">
+                        {chapterDoc?.name || 'Notes'}
+                    </h1>
+                    {/* Only show Add button for admins */}
+                    {isAdmin && (
+                        <button 
+                            onClick={() => setIsAdding(true)} 
+                            disabled={!isOnline} 
+                            className="inline-flex items-center px-4 py-2.5 bg-blue-500 text-white font-semibold rounded-xl shadow-lg hover:bg-blue-600 disabled:opacity-50"
+                        >
                             <FaPlus className="mr-2" />
                             {isOnline ? 'Add Note' : 'Offline'}
                         </button>
@@ -107,9 +123,9 @@ const NoteItems = ({ setHeaderTitle }) => {
 
                 <NetworkStatus isOnline={isOnline} fromCache={fromCache} hasPendingWrites={hasPendingWrites} />
 
-                {/* Add Item Form */}
-                {isAdding && (
-                     <div className="mb-6 p-4 bg-white rounded-xl shadow-md border">
+                {/* Add Item Form - Only for admins */}
+                {isAdding && isAdmin && (
+                    <div className="mb-6 p-4 bg-white rounded-xl shadow-md border">
                         <h4 className="font-semibold mb-2">Create New Note</h4>
                         <input 
                             type="text" 
@@ -117,10 +133,20 @@ const NoteItems = ({ setHeaderTitle }) => {
                             onChange={(e) => setNewItemName(e.target.value)} 
                             placeholder="Enter note title..." 
                             className="w-full p-2 border border-gray-300 rounded-lg mb-2"
+                            disabled={!isAdmin}
                         />
                         <div className="flex justify-end gap-2">
-                            <button onClick={() => setIsAdding(false)} className="px-4 py-2 bg-gray-200 text-gray-700 font-semibold rounded-lg hover:bg-gray-300">Cancel</button>
-                            <button onClick={handleSaveItem} disabled={!newItemName.trim() || !isOnline} className="px-4 py-2 bg-green-500 text-white font-semibold rounded-lg hover:bg-green-600 disabled:opacity-50">
+                            <button 
+                                onClick={() => setIsAdding(false)} 
+                                className="px-4 py-2 bg-gray-200 text-gray-700 font-semibold rounded-lg hover:bg-gray-300"
+                            >
+                                Cancel
+                            </button>
+                            <button 
+                                onClick={handleSaveItem} 
+                                disabled={!newItemName.trim() || !isOnline || !isAdmin} 
+                                className="px-4 py-2 bg-green-500 text-white font-semibold rounded-lg hover:bg-green-600 disabled:opacity-50"
+                            >
                                 {isOnline ? 'Create' : 'Offline'}
                             </button>
                         </div>
@@ -140,6 +166,7 @@ const NoteItems = ({ setHeaderTitle }) => {
                                     subjectId={subjectId}
                                     chapterId={chapterId}
                                     isOnline={isOnline}
+                                    isAdmin={isAdmin}
                                     onNavigate={navigate}
                                     onDelete={handleDelete}
                                 />
@@ -154,8 +181,7 @@ const NoteItems = ({ setHeaderTitle }) => {
     );
 };
 
-
-const NoteItem = ({ item, subjectId, chapterId, isOnline, onNavigate, onDelete }) => {
+const NoteItem = ({ item, subjectId, chapterId, isOnline, isAdmin, onNavigate, onDelete }) => {
     const isPending = item._metadata?.hasPendingWrites;
 
     return (
@@ -167,11 +193,19 @@ const NoteItem = ({ item, subjectId, chapterId, isOnline, onNavigate, onDelete }
                     {isPending && <span className="text-sm font-normal text-gray-500"> (saving...)</span>}
                 </span>
             </div>
-            <div className="opacity-0 group-hover:opacity-100 transition-opacity">
-                <button onClick={() => onDelete(item.id)} disabled={!isOnline} className="p-2 text-gray-500 hover:text-red-600 rounded-full hover:bg-red-50 disabled:opacity-50">
-                    <MdDelete size={20} />
-                </button>
-            </div>
+            {/* Only show delete button for admins */}
+            {isAdmin && (
+                <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button 
+                        onClick={() => onDelete(item.id)} 
+                        disabled={!isOnline} 
+                        className="p-2 text-gray-500 hover:text-red-600 rounded-full hover:bg-red-50 disabled:opacity-50"
+                        title="Delete note (Admin only)"
+                    >
+                        <MdDelete size={20} />
+                    </button>
+                </div>
+            )}
         </li>
     );
 };

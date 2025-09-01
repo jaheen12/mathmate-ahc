@@ -16,6 +16,9 @@ const NoteChapters = ({ setHeaderTitle }) => {
     const navigate = useNavigate();
     const { currentUser } = useAuth();
 
+    // Since only admin account exists, currentUser = admin
+    const isAdmin = !!currentUser;
+
     // Fetch parent subject name for the header
     const { data: subjectDoc } = useFirestoreDocument(['official_notes', subjectId]);
 
@@ -55,7 +58,7 @@ const NoteChapters = ({ setHeaderTitle }) => {
     }, [chapters, searchTerm]);
 
     const handleSaveChapter = useCallback(async () => {
-        if (newChapterName.trim() === '') return;
+        if (newChapterName.trim() === '' || !isAdmin) return;
         try {
             await addItem({ name: newChapterName.trim() });
             setNewChapterName('');
@@ -63,9 +66,10 @@ const NoteChapters = ({ setHeaderTitle }) => {
         } catch (error) {
             console.error('Failed to add chapter:', error);
         }
-    }, [newChapterName, addItem]);
+    }, [newChapterName, addItem, isAdmin]);
 
     const handleDelete = useCallback(async (chapterId) => {
+        if (!isAdmin) return;
         if (window.confirm('Are you sure you want to delete this chapter? This action cannot be undone.')) {
             try {
                 await deleteItem(chapterId, false);
@@ -73,10 +77,10 @@ const NoteChapters = ({ setHeaderTitle }) => {
                 console.error('Failed to delete chapter:', error);
             }
         }
-    }, [deleteItem]);
+    }, [deleteItem, isAdmin]);
 
     const handleSaveRename = useCallback(async () => {
-        if (renamingChapterName.trim() === '') return;
+        if (renamingChapterName.trim() === '' || !isAdmin) return;
         try {
             await updateItem(renamingChapterId, { name: renamingChapterName.trim() });
             setRenamingChapterId(null);
@@ -84,12 +88,13 @@ const NoteChapters = ({ setHeaderTitle }) => {
         } catch (error) {
             console.error('Failed to rename chapter:', error);
         }
-    }, [renamingChapterName, renamingChapterId, updateItem]);
+    }, [renamingChapterName, renamingChapterId, updateItem, isAdmin]);
 
     const handleRenameClick = useCallback((chapter) => {
+        if (!isAdmin) return;
         setRenamingChapterId(chapter.id);
         setRenamingChapterName(chapter.name);
-    }, []);
+    }, [isAdmin]);
 
     const handleKeyPress = useCallback((e, action) => {
         if (e.key === 'Enter') {
@@ -128,7 +133,9 @@ const NoteChapters = ({ setHeaderTitle }) => {
         <div className="text-center py-20">
             <div className="relative">
                 <HiOutlineCollection size={80} className="mx-auto text-gray-300" />
-                <div className="absolute -top-2 -right-2 w-6 h-6 bg-purple-500 rounded-full opacity-20 animate-ping"></div>
+                {isAdmin && (
+                    <div className="absolute -top-2 -right-2 w-6 h-6 bg-purple-500 rounded-full opacity-20 animate-ping"></div>
+                )}
             </div>
             <h3 className="text-2xl font-bold text-gray-700 mt-6">
                 {searchTerm ? 'No Matching Chapters' : 'No Chapters Yet'}
@@ -136,7 +143,9 @@ const NoteChapters = ({ setHeaderTitle }) => {
             <p className="text-gray-500 mt-2 max-w-md mx-auto">
                 {searchTerm 
                     ? `No chapters found matching "${searchTerm}". Try a different search term.`
-                    : "Start organizing your content by creating the first chapter."
+                    : isAdmin 
+                        ? "Start organizing your content by creating the first chapter."
+                        : "Chapters will appear here."
                 }
             </p>
             {searchTerm && (
@@ -163,11 +172,12 @@ const NoteChapters = ({ setHeaderTitle }) => {
                         placeholder="Enter chapter name..."
                         className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none transition-all"
                         autoFocus
+                        disabled={!isAdmin}
                     />
                 </div>
                 <button
                     onClick={handleSaveChapter}
-                    disabled={!newChapterName.trim()}
+                    disabled={!newChapterName.trim() || !isAdmin}
                     className="px-4 py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
                 >
                     <MdCheck size={18} />
@@ -225,7 +235,8 @@ const NoteChapters = ({ setHeaderTitle }) => {
                             </div>
                         </div>
                     </div>
-                    {currentUser && (
+                    {/* Only show Add button for admins */}
+                    {isAdmin && (
                         <button 
                             onClick={() => setIsAdding(true)} 
                             disabled={!isOnline || isAdding} 
@@ -261,8 +272,8 @@ const NoteChapters = ({ setHeaderTitle }) => {
                     </div>
                 )}
 
-                {/* Add Chapter Form */}
-                {isAdding && <AddChapterForm />}
+                {/* Add Chapter Form - Only for admins */}
+                {isAdding && isAdmin && <AddChapterForm />}
 
                 {/* Chapters List */}
                 <div className="mt-6">
@@ -277,6 +288,7 @@ const NoteChapters = ({ setHeaderTitle }) => {
                                     index={index}
                                     subjectId={subjectId}
                                     isOnline={isOnline}
+                                    isAdmin={isAdmin}
                                     onNavigate={navigate}
                                     onRename={handleRenameClick}
                                     onDelete={handleDelete}
@@ -308,6 +320,7 @@ const ChapterItem = ({
     index, 
     subjectId, 
     isOnline, 
+    isAdmin,
     onNavigate, 
     onRename, 
     onDelete, 
@@ -335,8 +348,8 @@ const ChapterItem = ({
             onMouseEnter={() => setHoveredChapter(chapter.id)}
             onMouseLeave={() => setHoveredChapter(null)}
         >
-            {/* Rename Form Overlay */}
-            {isRenaming && (
+            {/* Rename Form Overlay - Only for admins */}
+            {isRenaming && isAdmin && (
                 <div className="absolute inset-0 bg-white rounded-xl border-2 border-purple-500 shadow-lg z-10 p-4">
                     <div className="flex flex-col gap-3 h-full justify-center">
                         <label className="text-sm font-medium text-gray-700">Rename Chapter</label>
@@ -347,11 +360,12 @@ const ChapterItem = ({
                             onKeyPress={(e) => handleKeyPress(e, onSaveRename)}
                             className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
                             autoFocus
+                            disabled={!isAdmin}
                         />
                         <div className="flex gap-2">
                             <button
                                 onClick={onSaveRename}
-                                disabled={!renamingValue.trim()}
+                                disabled={!renamingValue.trim() || !isAdmin}
                                 className="flex-1 px-3 py-2 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 disabled:opacity-50 transition-colors flex items-center justify-center gap-1"
                             >
                                 <MdCheck size={16} />
@@ -407,8 +421,8 @@ const ChapterItem = ({
                     </div>
                 </div>
 
-                {/* Action Buttons */}
-                {isOnline && !isRenaming && (
+                {/* Action Buttons - Only show for admins */}
+                {isOnline && isAdmin && !isRenaming && (
                     <div className={`flex items-center space-x-2 transition-all duration-200 ${
                         isHovered ? 'opacity-100 transform scale-100' : 'opacity-0 transform scale-95'
                     }`}>
@@ -417,7 +431,7 @@ const ChapterItem = ({
                                 e.stopPropagation();
                                 onRename(chapter);
                             }} 
-                            disabled={!isOnline} 
+                            disabled={!isOnline || !isAdmin} 
                             className="p-2 text-gray-500 hover:text-purple-600 rounded-full hover:bg-purple-50 disabled:opacity-50 transition-all duration-200 transform hover:scale-110"
                         >
                             <MdEdit size={18} />
@@ -427,7 +441,7 @@ const ChapterItem = ({
                                 e.stopPropagation();
                                 onDelete(chapter.id);
                             }} 
-                            disabled={!isOnline} 
+                            disabled={!isOnline || !isAdmin} 
                             className="p-2 text-gray-500 hover:text-red-600 rounded-full hover:bg-red-50 disabled:opacity-50 transition-all duration-200 transform hover:scale-110"
                         >
                             <MdDelete size={18} />

@@ -28,6 +28,9 @@ const NoteSubjects = ({ setHeaderTitle }) => {
     const navigate = useNavigate();
     const { currentUser } = useAuth();
     
+    // Since only admin account exists, currentUser = admin
+    const isAdmin = !!currentUser;
+    
     // UI state
     const [newSubjectName, setNewSubjectName] = useState('');
     const [isAdding, setIsAdding] = useState(false);
@@ -50,30 +53,32 @@ const NoteSubjects = ({ setHeaderTitle }) => {
 
     const handleSaveSubject = useCallback(async (e) => {
         e?.preventDefault();
-        if (newSubjectName.trim() === '') return;
+        if (newSubjectName.trim() === '' || !isAdmin) return;
         await addItem({ name: newSubjectName.trim() });
         setNewSubjectName('');
         setIsAdding(false);
-    }, [newSubjectName, addItem]);
+    }, [newSubjectName, addItem, isAdmin]);
 
     const handleDelete = useCallback(async (subjectId) => {
+        if (!isAdmin) return;
         if (window.confirm('Are you sure you want to delete this subject?')) {
             await deleteItem(subjectId, false);
         }
-    }, [deleteItem]);
+    }, [deleteItem, isAdmin]);
 
     const handleSaveRename = useCallback(async (e) => {
         e?.preventDefault();
-        if (renamingSubjectName.trim() === '') return;
+        if (renamingSubjectName.trim() === '' || !isAdmin) return;
         await updateItem(renamingSubjectId, { name: renamingSubjectName.trim() });
         setRenamingSubjectId(null);
         setRenamingSubjectName('');
-    }, [renamingSubjectName, renamingSubjectId, updateItem]);
+    }, [renamingSubjectName, renamingSubjectId, updateItem, isAdmin]);
 
     const handleRenameClick = useCallback((subject) => {
+        if (!isAdmin) return;
         setRenamingSubjectId(subject.id);
         setRenamingSubjectName(subject.name);
-    }, []);
+    }, [isAdmin]);
 
     const handleSubjectClick = useCallback((subjectId) => {
         navigate(`/notes/${subjectId}`);
@@ -89,9 +94,7 @@ const NoteSubjects = ({ setHeaderTitle }) => {
         setRenamingSubjectName('');
     }, []);
 
-    const clearSearch = useCallback(() => {
-        setSearchQuery('');
-    }, []);
+    const clearSearch = useCallback(() => setSearchQuery(''), []);
 
     // Color palette for subject cards
     const cardColors = [
@@ -125,18 +128,20 @@ const NoteSubjects = ({ setHeaderTitle }) => {
         <div className="text-center py-20">
             <div className="relative">
                 <HiOutlineAcademicCap size={80} className="mx-auto text-gray-300" />
-                <div className="absolute -top-2 -right-2 w-8 h-8 bg-gradient-to-r from-green-400 to-blue-400 rounded-full flex items-center justify-center">
-                    <FaPlus size={12} className="text-white" />
-                </div>
+                {isAdmin && (
+                    <div className="absolute -top-2 -right-2 w-8 h-8 bg-gradient-to-r from-green-400 to-blue-400 rounded-full flex items-center justify-center">
+                        <FaPlus size={12} className="text-white" />
+                    </div>
+                )}
             </div>
             <h3 className="text-2xl font-bold text-gray-700 mt-6">No Subjects Yet</h3>
             <p className="text-gray-500 mt-2 max-w-md mx-auto">
                 {searchQuery ? 
                     `No subjects match "${searchQuery}". Try a different search term.` :
-                    currentUser ? "Create your first subject to start organizing your notes." : "Official subjects will appear here."
+                    isAdmin ? "Create your first subject to start organizing your notes." : "Official subjects will appear here."
                 }
             </p>
-            {currentUser && !searchQuery && (
+            {isAdmin && !searchQuery && (
                 <button 
                     onClick={() => setIsAdding(true)}
                     className="mt-6 inline-flex items-center px-6 py-3 bg-gradient-to-r from-green-500 to-blue-500 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200"
@@ -160,11 +165,12 @@ const NoteSubjects = ({ setHeaderTitle }) => {
                         className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200"
                         autoFocus
                         maxLength={50}
+                        disabled={!isAdmin}
                     />
                 </div>
                 <button
                     type="submit"
-                    disabled={!newSubjectName.trim() || !isOnline}
+                    disabled={!newSubjectName.trim() || !isOnline || !isAdmin}
                     className="px-6 py-3 bg-gradient-to-r from-green-500 to-blue-500 text-white font-semibold rounded-xl hover:shadow-lg transform hover:scale-105 transition-all duration-200 disabled:opacity-50 disabled:transform-none"
                 >
                     <MdCheck size={18} />
@@ -231,7 +237,8 @@ const NoteSubjects = ({ setHeaderTitle }) => {
                             </p>
                         </div>
                     </div>
-                    {currentUser && !isAdding && (
+                    {/* Only show Add button for admins */}
+                    {isAdmin && !isAdding && (
                         <button 
                             onClick={() => setIsAdding(true)}
                             disabled={!isOnline}
@@ -245,8 +252,8 @@ const NoteSubjects = ({ setHeaderTitle }) => {
 
                 <NetworkStatus isOnline={isOnline} fromCache={fromCache} hasPendingWrites={hasPendingWrites} />
 
-                {/* Add Subject Form */}
-                {isAdding && <AddSubjectForm />}
+                {/* Add Subject Form - Only for admins */}
+                {isAdding && isAdmin && <AddSubjectForm />}
 
                 {/* Search Bar */}
                 {subjects.length > 0 && <SearchBar />}
@@ -272,6 +279,7 @@ const NoteSubjects = ({ setHeaderTitle }) => {
                                     subject={subject}
                                     index={index}
                                     isOnline={isOnline}
+                                    isAdmin={isAdmin}
                                     onDelete={handleDelete}
                                     onRename={handleRenameClick}
                                     onClick={handleSubjectClick}
@@ -297,6 +305,7 @@ const SubjectCard = ({
     subject, 
     index, 
     isOnline, 
+    isAdmin,
     onDelete, 
     onRename, 
     onClick, 
@@ -309,7 +318,7 @@ const SubjectCard = ({
 }) => {
     const isPending = subject._metadata?.hasPendingWrites;
 
-    if (isRenaming) {
+    if (isRenaming && isAdmin) {
         return (
             <div className="bg-white rounded-2xl border-2 border-green-500 shadow-lg p-6">
                 <form onSubmit={onSaveRename} className="space-y-3">
@@ -320,11 +329,12 @@ const SubjectCard = ({
                         className="w-full px-3 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent"
                         autoFocus
                         maxLength={50}
+                        disabled={!isAdmin}
                     />
                     <div className="flex gap-2">
                         <button
                             type="submit"
-                            disabled={!renamingName.trim()}
+                            disabled={!renamingName.trim() || !isAdmin}
                             className="flex-1 px-3 py-2 bg-green-500 text-white rounded-xl hover:bg-green-600 transition-colors disabled:opacity-50"
                         >
                             <MdCheck size={16} className="mx-auto" />
@@ -366,8 +376,8 @@ const SubjectCard = ({
                 </div>
             </div>
             
-            {/* Action buttons */}
-            {isOnline && (
+            {/* Action buttons - Only show for admins */}
+            {isOnline && isAdmin && (
                 <div className="absolute top-3 right-3 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                     <button 
                         onClick={(e) => { e.stopPropagation(); onRename(subject); }} 
