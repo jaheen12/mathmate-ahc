@@ -197,13 +197,7 @@ const Dashboard = ({ setHeaderTitle }) => {
   const parseTimeToMinutes = useCallback((timeStr) => {
     if (!timeStr) return 0;
     
-    // Handle timeSlot format like "9:45 AM-10:30 AM" - extract start time
     let cleanTime = timeStr.toString().trim();
-    
-    // If it contains a dash (time range), take the start time
-    if (cleanTime.includes('-')) {
-      cleanTime = cleanTime.split('-')[0].trim();
-    }
     
     console.log('Parsing time:', cleanTime);
     
@@ -228,6 +222,29 @@ const Dashboard = ({ setHeaderTitle }) => {
       return hours * 60 + minutes;
     }
   }, []);
+
+  // --- NEW HELPER FUNCTION TO PARSE TIME RANGES ---
+  const parseTimeRange = useCallback((timeSlot) => {
+    if (!timeSlot) return { startMinutes: 0, endMinutes: 0 };
+    
+    const timeStr = timeSlot.toString().trim();
+    
+    // Handle timeSlot format like "9:45 AM-10:30 AM"
+    if (timeStr.includes('-')) {
+      const [startTime, endTime] = timeStr.split('-').map(time => time.trim());
+      return {
+        startMinutes: parseTimeToMinutes(startTime),
+        endMinutes: parseTimeToMinutes(endTime)
+      };
+    } else {
+      // If no range, assume it's just a start time (fallback)
+      const startMinutes = parseTimeToMinutes(timeStr);
+      return {
+        startMinutes,
+        endMinutes: startMinutes + 60 // Assume 1-hour duration as fallback
+      };
+    }
+  }, [parseTimeToMinutes]);
 
   // --- ENHANCED UPCOMING CLASSES LOGIC ---
   const upcomingClassesData = useMemo(() => {
@@ -255,20 +272,25 @@ const Dashboard = ({ setHeaderTitle }) => {
     
     const remainingTodayClasses = todayClasses
       .filter(classInfo => {
-        // Use timeSlot instead of time
-        const classTimeMinutes = parseTimeToMinutes(classInfo.timeSlot);
-        console.log(`Class: ${classInfo.subject} at ${classInfo.timeSlot} (${classTimeMinutes} minutes) vs current (${currentTimeMinutes} minutes)`);
-        return classTimeMinutes > currentTimeMinutes;
+        const { startMinutes, endMinutes } = parseTimeRange(classInfo.timeSlot);
+        console.log(`Class: ${classInfo.subject} from ${startMinutes} to ${endMinutes} minutes vs current ${currentTimeMinutes} minutes`);
+        
+        // Class should remain visible until it ends (not when it starts)
+        return endMinutes > currentTimeMinutes;
       })
-      .sort((a, b) => parseTimeToMinutes(a.timeSlot) - parseTimeToMinutes(b.timeSlot));
+      .sort((a, b) => {
+        const aStart = parseTimeRange(a.timeSlot).startMinutes;
+        const bStart = parseTimeRange(b.timeSlot).startMinutes;
+        return aStart - bStart;
+      });
     
     console.log('Remaining today classes:', remainingTodayClasses);
     
     // If we have remaining classes today, return them
     if (remainingTodayClasses.length > 0) {
       const nextClass = remainingTodayClasses[0];
-      const nextClassMinutes = parseTimeToMinutes(nextClass.time);
-      const minutesUntilNext = nextClassMinutes - currentTimeMinutes;
+      const { startMinutes: nextClassStartMinutes } = parseTimeRange(nextClass.timeSlot);
+      const minutesUntilNext = nextClassStartMinutes - currentTimeMinutes;
       
       let countdown = null;
       if (minutesUntilNext > 0) {
@@ -295,9 +317,11 @@ const Dashboard = ({ setHeaderTitle }) => {
       console.log(`Checking ${nextDayName}:`, nextDayClasses);
       
       if (nextDayClasses.length > 0) {
-        const sortedClasses = [...nextDayClasses].sort((a, b) => 
-          parseTimeToMinutes(a.timeSlot) - parseTimeToMinutes(b.timeSlot)
-        );
+        const sortedClasses = [...nextDayClasses].sort((a, b) => {
+          const aStart = parseTimeRange(a.timeSlot).startMinutes;
+          const bStart = parseTimeRange(b.timeSlot).startMinutes;
+          return aStart - bStart;
+        });
         
         return {
           classes: sortedClasses,
@@ -308,7 +332,7 @@ const Dashboard = ({ setHeaderTitle }) => {
     }
     
     return { classes: [], day: '', nextClassCountdown: null };
-  }, [scheduleDoc, currentTime, parseTimeToMinutes]);
+  }, [scheduleDoc, currentTime, parseTimeRange]);
 
   // Memoized time calculations for header
   const { timeString, dateString } = useMemo(() => {
@@ -409,7 +433,7 @@ const Dashboard = ({ setHeaderTitle }) => {
               <div className="space-y-3">
                 {upcomingClassesData.classes.map((classInfo, index) => (
                   <div 
-                    key={`${classInfo.subject}-${classInfo.time}-${index}`}
+                    key={`${classInfo.subject}-${classInfo.timeSlot}-${index}`}
                     className="flex items-center justify-between p-4 bg-gradient-to-r from-gray-50 to-gray-100 rounded-xl transition-all duration-200 hover:shadow-sm border border-gray-100"
                     style={{ animationDelay: `${index * 0.1}s` }}
                   >

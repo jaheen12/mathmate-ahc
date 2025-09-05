@@ -126,50 +126,10 @@ const DayIndicator = ({ day, isToday, dayIndex }) => {
     );
 };
 
-// Current time indicator - Memoized for performance
-const CurrentTimeIndicator = React.memo(({ currentTime, timeSlots }) => {
-    const position = useMemo(() => {
-        const now = currentTime;
-        const currentMinutes = now.getHours() * 60 + now.getMinutes();
-        
-        for (let i = 0; i < timeSlots.length; i++) {
-            const [startTime, endTime] = timeSlots[i].split('-');
-            const startMinutes = timeToMinutes(startTime + ' ' + (startTime.includes('AM') || startTime.includes('PM') ? '' : 'AM'));
-            const endMinutes = timeToMinutes(endTime + ' ' + (endTime.includes('AM') || endTime.includes('PM') ? '' : 'AM'));
-            
-            if (currentMinutes >= startMinutes && currentMinutes <= endMinutes) {
-                const progress = (currentMinutes - startMinutes) / (endMinutes - startMinutes);
-                return { slotIndex: i, progress };
-            }
-        }
-        return null;
-    }, [currentTime, timeSlots]);
-    
-    if (!position) return null;
-    
-    // Updated calculation to account for day column being part of table flow
-    const leftOffset = 160 + (position.slotIndex * 192) + (position.progress * 192);
-    
-    return (
-        <div 
-            className="absolute top-0 bottom-0 w-1 bg-gradient-to-b from-red-400 to-red-600 z-20 pointer-events-none will-change-transform rounded-full shadow-lg"
-            style={{ left: `${leftOffset}px` }}
-        >
-            <div className="absolute -top-2 -left-3 w-6 h-6 bg-red-500 rounded-full flex items-center justify-center shadow-lg">
-                <div className="w-3 h-3 bg-white rounded-full"></div>
-            </div>
-            <div className="absolute -bottom-2 -left-3 w-6 h-6 bg-red-500 rounded-full flex items-center justify-center shadow-lg">
-                <div className="w-3 h-3 bg-white rounded-full"></div>
-            </div>
-        </div>
-    );
-});
-
 // --- Main ScheduleView Component ---
 const ScheduleView = ({ scheduleDays }) => {
     const [selectedClass, setSelectedClass] = useState(null);
     const [timeSlots, setTimeSlots] = useState([]);
-    const [currentTime, setCurrentTime] = useState(new Date());
 
     const { 
         data: timeSlotsDoc, 
@@ -181,14 +141,6 @@ const ScheduleView = ({ scheduleDays }) => {
     // Memoize current day calculation
     const currentDayIndex = useMemo(() => {
         return new Date().getDay();
-    }, []);
-
-    // Update current time every minute with cleanup
-    useEffect(() => {
-        const timer = setInterval(() => {
-            setCurrentTime(new Date());
-        }, 60000);
-        return () => clearInterval(timer);
     }, []);
 
     // Memoize time slots processing
@@ -283,9 +235,6 @@ const ScheduleView = ({ scheduleDays }) => {
                                     </div>
                                 )}
                             </Droppable>
-                            
-                            {/* Current time indicator */}
-                            <CurrentTimeIndicator currentTime={currentTime} timeSlots={timeSlots} />
                             
                             {/* Schedule Grid */}
                             <div className="bg-gradient-to-br from-gray-50 to-white">
