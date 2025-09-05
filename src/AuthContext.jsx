@@ -4,35 +4,38 @@ import { auth } from './firebaseConfig'; // Make sure this path is correct
 
 const AuthContext = React.createContext();
 
-// Export the useAuth hook as a named export
+// Export the useAuth hook for easy consumption in other components
 export function useAuth() {
     return useContext(AuthContext);
 }
 
-// Move AuthProvider to be the default export to fix fast refresh issue
+// The AuthProvider component that wraps your app
 function AuthProvider({ children }) {
     const [currentUser, setCurrentUser] = useState(null);
-    // Ignore the unused 'loading' variable by prefixing it with an underscore.
-    const [_loading, setLoading] = useState(true);
+    const [loading, setLoading] = useState(true); // We will now use this state
 
     useEffect(() => {
-        // This function will be called by Firebase when the user's login state is first checked,
-        // and every time it changes (login or logout).
+        // onAuthStateChanged is the core of Firebase Auth's persistence.
+        // It fires once with the cached user (even offline) and then
+        // again if the auth state changes.
         const unsubscribe = onAuthStateChanged(auth, user => {
             setCurrentUser(user);
-            setLoading(false);
+            setLoading(false); // Set loading to false after the first check
         });
 
-        // This cleans up the listener when the component is no longer needed.
+        // Cleanup the listener when the component unmounts
         return unsubscribe;
     }, []);
 
+    // The context value now includes the loading state
     const value = {
-        currentUser
+        currentUser,
+        loading // <-- CHANGE: Expose the loading state
     };
     
-    // The AuthProvider's only job is to provide the context value.
-    // Pages that consume this context can decide what to render based on the value.
+    // We don't render children until the initial check is complete.
+    // This prevents components from rendering with a 'null' user
+    // when the app is just starting up.
     return (
         <AuthContext.Provider value={value}>
             {children}
@@ -40,6 +43,4 @@ function AuthProvider({ children }) {
     );
 }
 
-// Export AuthProvider as both named and default export for flexibility
-export { AuthProvider };
 export default AuthProvider;

@@ -1,5 +1,5 @@
 import { initializeApp } from "firebase/app";
-import { getFirestore } from "firebase/firestore";
+import { getFirestore, enablePersistence } from "firebase/firestore"; // Modified this line
 import { getAuth } from "firebase/auth";
 import dotenv from 'dotenv';
 
@@ -21,6 +21,30 @@ const firebaseConfig = {
   appId: isViteEnv ? import.meta.env.VITE_APP_ID : process.env.VITE_APP_ID
 };
 
+// Initialize Firebase App
 const app = initializeApp(firebaseConfig);
-export const db = getFirestore(app);
+
+// Initialize Firestore
+const db = getFirestore(app);
+
+// --- THIS IS THE NEW CODE TO ENABLE OFFLINE CACHING ---
+// It attempts to enable offline persistence for Firestore.
+enablePersistence(db)
+  .catch((err) => {
+    if (err.code == 'failed-precondition') {
+      // This can happen if you have multiple tabs of your app open.
+      // Persistence can only be enabled in one tab at a time.
+      console.warn('Firestore persistence failed: Multiple tabs open. Offline features may be limited.');
+    } else if (err.code == 'unimplemented') {
+      // This means the browser is too old or doesn't support the required features.
+      console.error('Firestore persistence is not available in this browser.');
+    }
+  });
+// --- END OF NEW CODE ---
+
+
+// Initialize Auth
 export const auth = getAuth(app);
+
+// Export db instance for use in other files
+export { db };

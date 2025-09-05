@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useParams, useNavigate, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
-import { useFirestoreDocument } from '../hooks/useFirestoreDocument';
-import useLocalStorage from '../hooks/useLocalStorage';
+import { useLocalStorageAsArray as useLocalStorage } from '../hooks/useLocalStorage'; // Using the array-based hook
 import Skeleton from 'react-loading-skeleton';
+import { toast } from 'react-toastify';
 
 import { FaPlus } from "react-icons/fa";
 import { MdDelete, MdOutlineNoteAdd } from "react-icons/md";
@@ -12,28 +12,33 @@ import { IoArrowBack } from "react-icons/io5";
 const PersonalNoteItems = ({ setHeaderTitle }) => {
     const { subjectId, chapterId } = useParams();
     const navigate = useNavigate();
+    const location = useLocation(); // Hook to get navigation state
     const { currentUser } = useAuth();
 
-    const { data: chapterDoc, loading: chapterLoading } = useFirestoreDocument(['personal_notes', subjectId, 'chapters', chapterId]);
+    // --- CHANGE: Get chapter name from navigation state, not Firestore ---
+    const chapterName = location.state?.chapterName || 'Notes';
 
     useEffect(() => {
-        setHeaderTitle(chapterDoc?.name || 'Notes');
-    }, [chapterDoc, setHeaderTitle]);
+        setHeaderTitle(chapterName);
+    }, [chapterName, setHeaderTitle]);
 
     const localStorageKey = useMemo(() => chapterId ? `personal_notes_items_${chapterId}` : null, [chapterId]);
-    const { value: items, setValue: setItems } = useLocalStorage(localStorageKey, []);
+    const [items, setItems] = useLocalStorage(localStorageKey, []);
     
     const [newItemName, setNewItemName] = useState('');
     const [isAdding, setIsAdding] = useState(false);
     
+    // --- CHANGE: Added user feedback ---
     const addItem = useCallback((newItem) => {
         const itemWithId = { ...newItem, id: `local_${Date.now()}`, createdAt: new Date().toISOString() };
         setItems(prev => [...prev, itemWithId]);
+        toast.success("Note created!");
     }, [setItems]);
 
     const deleteItem = useCallback((itemId) => {
         if (window.confirm("Are you sure you want to permanently delete this note?")) {
             setItems(prev => prev.filter(item => item.id !== itemId));
+            toast.success("Note deleted!");
         }
     }, [setItems]);
 
@@ -63,14 +68,6 @@ const PersonalNoteItems = ({ setHeaderTitle }) => {
         </div>
     );
     
-    if (chapterLoading) {
-        return (
-            <div className="max-w-4xl mx-auto p-4 sm:p-6">
-                <ItemsSkeleton />
-            </div>
-        );
-    }
-
     return (
         <div className="p-4 sm:p-6 min-h-screen bg-gray-50">
             <div className="max-w-4xl mx-auto">
@@ -79,8 +76,9 @@ const PersonalNoteItems = ({ setHeaderTitle }) => {
                         <IoArrowBack size={24} className="mr-2" />
                         <span className="font-semibold hidden sm:inline">Back to Chapters</span>
                     </Link>
+                    <h1 className="text-xl font-bold text-gray-800 text-center flex-1 mx-4 truncate">{chapterName}</h1>
                     {currentUser && (
-                        <button onClick={() => setIsAdding(true)} className="inline-flex items-center px-4 py-2 bg-blue-500 text-white font-semibold rounded-lg shadow-md hover:bg-blue-600">
+                        <button onClick={() => setIsAdding(true)} className="inline-flex items-center px-4 py-2 bg-blue-500 text-white font-semibold rounded-lg shadow-md hover:bg-blue-600 transition-transform transform hover:scale-105">
                             <FaPlus className="mr-2" />
                             Add Item
                         </button>
@@ -88,18 +86,11 @@ const PersonalNoteItems = ({ setHeaderTitle }) => {
                 </div>
 
                 {isAdding && (
-                    <div className="my-4 p-4 bg-white rounded-lg shadow-md border">
-                        <input 
-                            type="text" 
-                            value={newItemName} 
-                            onChange={(e) => setNewItemName(e.target.value)} 
-                            placeholder="New note title" 
-                            className="border p-2 w-full mb-2 rounded-md" 
-                            autoFocus
-                        />
+                    <div className="my-4 p-4 bg-white rounded-lg shadow-md border animate-in fade-in-0 duration-300">
+                        <input type="text" value={newItemName} onChange={(e) => setNewItemName(e.target.value)} placeholder="New note title" className="border p-2 w-full mb-2 rounded-md focus:ring-2 focus:ring-blue-500" autoFocus />
                         <div className="flex justify-end gap-2">
                             <button onClick={() => setIsAdding(false)} className="px-4 py-2 bg-gray-200 text-gray-700 font-semibold rounded-lg hover:bg-gray-300">Cancel</button>
-                            <button onClick={handleSaveItem} className="px-4 py-2 bg-green-500 text-white font-semibold rounded-lg hover:bg-green-600">
+                            <button onClick={handleSaveItem} disabled={!newItemName.trim()} className="px-4 py-2 bg-green-500 text-white font-semibold rounded-lg hover:bg-green-600 disabled:opacity-50">
                                 Save
                             </button>
                         </div>
@@ -110,31 +101,22 @@ const PersonalNoteItems = ({ setHeaderTitle }) => {
                     {items && items.length > 0 ? (
                         <ul className="space-y-3">
                             {items.map(item => (
-                                <NoteItem
-                                    key={item.id}
-                                    item={item}
-                                    subjectId={subjectId}
-                                    chapterId={chapterId}
-                                    onNavigate={navigate}
-                                    onDelete={handleDelete}
-                                />
+                                <NoteItem key={item.id} item={item} subjectId={subjectId} chapterId={chapterId} navigate={navigate} onDelete={handleDelete} />
                             ))}
                         </ul>
-                    ) : (
-                        <EmptyState />
-                    )}
+                    ) : ( <EmptyState /> )}
                 </div>
             </div>
         </div>
     );
 };
 
-const NoteItem = ({ item, subjectId, chapterId, onNavigate, onDelete }) => (
+const NoteItem = ({ item, subjectId, chapterId, navigate, onDelete }) => (
     <li className="flex justify-between items-center p-4 bg-white rounded-lg shadow-md transition-shadow hover:shadow-lg">
-        <div onClick={() => onNavigate(`/personal-notes/${subjectId}/${chapterId}/${item.id}`)} className="cursor-pointer font-semibold text-lg text-gray-800 flex-grow">
+        <div onClick={() => navigate(`/personal-notes/${subjectId}/${chapterId}/${item.id}`)} className="cursor-pointer font-semibold text-lg text-gray-800 flex-grow min-w-0 truncate">
             {item.name}
         </div>
-        <button onClick={() => onDelete(item.id)} className="text-gray-500 hover:text-red-600 p-2 rounded-full hover:bg-gray-100">
+        <button onClick={() => onDelete(item.id)} className="text-gray-500 hover:text-red-600 p-2 rounded-full hover:bg-gray-100 flex-shrink-0">
             <MdDelete size={22} />
         </button>
     </li>

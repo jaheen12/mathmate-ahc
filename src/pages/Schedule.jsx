@@ -12,18 +12,17 @@ import {
     IoTrendingUpOutline,
     IoBookOutline,
     IoCheckmarkCircleOutline,
-    IoCloudOfflineOutline,
     IoBookmarksOutline,
-    IoRefreshOutline // Icon for the new refresh button
 } from "react-icons/io5"; 
 import { useFirestoreDocument } from '../hooks/useFirestoreDocument';
 import NetworkStatus from '../components/NetworkStatus';
 import ScheduleView from '../components/ScheduleView';
 import TimeSlotsEditorModal from '../components/TimeSlotsEditorModal';
-import { doc, updateDoc } from 'firebase/firestore'; // Import updateDoc for saving
-import { db } from '../firebaseConfig'; // Import your db instance
+import { doc, updateDoc } from 'firebase/firestore';
+import { db } from '../firebaseConfig';
 
-// --- Helper Component: MobileActionButton ---
+// --- Helper Components (No changes needed) ---
+
 const MobileActionButton = React.memo(({ onClick, to, icon: IconComponent, children, variant = 'secondary', fullWidth = false, disabled = false }) => {
     const baseClasses = "flex items-center justify-center space-x-2 px-4 py-3 rounded-xl font-medium transition-colors duration-150 text-sm";
     const variantClasses = {
@@ -51,7 +50,6 @@ const MobileActionButton = React.memo(({ onClick, to, icon: IconComponent, child
     return <button onClick={disabled ? undefined : onClick} className={className} disabled={disabled}>{content}</button>;
 });
 
-// --- Helper Component: StatCard ---
 const StatCard = React.memo(({ icon: IconComponent, title, value, color = "blue" }) => {
     const colorClasses = {
         blue: "bg-blue-50 border-blue-100 text-blue-600",
@@ -60,7 +58,6 @@ const StatCard = React.memo(({ icon: IconComponent, title, value, color = "blue"
         orange: "bg-orange-50 border-orange-100 text-orange-600",
         indigo: "bg-indigo-50 border-indigo-100 text-indigo-600"
     };
-
     return (
         <div className="bg-white rounded-xl border border-gray-100 p-4 hover:shadow-sm transition-shadow duration-150">
             <div className="flex items-center space-x-3">
@@ -74,7 +71,6 @@ const StatCard = React.memo(({ icon: IconComponent, title, value, color = "blue"
     );
 });
 
-// --- Helper Component: MobileSkeletonLoader ---
 const MobileSkeletonLoader = React.memo(() => (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50/20 px-4 py-2">
         <div className="space-y-4">
@@ -86,25 +82,19 @@ const MobileSkeletonLoader = React.memo(() => (
     </div>
 ));
 
-// --- Helper Component: QuickInsights ---
 const QuickInsights = React.memo(({ stats }) => {
     const insight = useMemo(() => {
         const { utilization, activeDays, totalSubjects, totalChapters } = stats;
-        
         if (utilization > 80) return { text: "High schedule utilization", icon: IoTrendingUpOutline, color: "text-orange-600" };
         if (totalChapters > 10) return { text: "Great topic diversity this week", icon: IoBookmarksOutline, color: "text-indigo-600" };
         if (activeDays === 5) return { text: "Full week scheduled", icon: IoCheckmarkCircleOutline, color: "text-green-600" };
         if (totalSubjects > 6) return { text: "Diverse subject coverage", icon: IoBookOutline, color: "text-purple-600" };
-        
         return { text: "Schedule looks well-balanced", icon: IoSchoolOutline, color: "text-blue-600" };
     }, [stats]);
-
-    const IconComponent = insight.icon;
-
     return (
         <div className="bg-gradient-to-r from-blue-500/5 to-purple-500/5 rounded-xl border border-blue-100 p-4">
             <div className="flex items-center space-x-3">
-                <IconComponent size={20} className={insight.color} />
+                <insight.icon size={20} className={insight.color} />
                 <div>
                     <p className={`text-sm font-medium ${insight.color}`}>Quick Insight</p>
                     <p className="text-sm text-gray-600">{insight.text}</p>
@@ -116,58 +106,43 @@ const QuickInsights = React.memo(({ stats }) => {
 
 // --- Main Schedule Component ---
 const Schedule = ({ setHeaderTitle }) => {
+    useEffect(() => {
+        setHeaderTitle('Class Schedule');
+    }, [setHeaderTitle]);
+
+    // --- CHANGE: The data hooks are now simplified to use the new automatic-syncing version. ---
     const { 
         data: scheduleDoc, 
         loading: scheduleLoading,
-        isOnline,
+        isOnline, // We only need to get isOnline from one hook
         fromCache: scheduleFromCache,
         hasPendingWrites: scheduleHasPending,
-        refresh: refreshSchedule
-    } = useFirestoreDocument(['schedules', 'first_year'], {
-        cacheFirst: true,
-        backgroundSyncInterval: 60000
-    });
+    } = useFirestoreDocument(['schedules', 'first_year']);
     
     const { 
         data: timeSlotsDoc, 
         loading: timeSlotsLoading, 
         fromCache: timeSlotsFromCache,
         hasPendingWrites: timeSlotsHasPending,
-        refresh: refreshTimeSlots
-    } = useFirestoreDocument(['time_slots', 'default_periods'], {
-        cacheFirst: true,
-        backgroundSyncInterval: 60000
-    });
+    } = useFirestoreDocument(['time_slots', 'default_periods']);
     
-    useEffect(() => {
-        setHeaderTitle('Class Schedule');
-    }, [setHeaderTitle]);
-
     const { currentUser } = useAuth();
     const [isModalOpen, setIsModalOpen] = useState(false);
-    const [refreshing, setRefreshing] = useState(false);
 
     const scheduleDays = useMemo(() => scheduleDoc?.days || {}, [scheduleDoc]);
     const timeSlots = useMemo(() => timeSlotsDoc?.periods || [], [timeSlotsDoc]);
     const fromCache = scheduleFromCache || timeSlotsFromCache;
     const hasPendingWrites = scheduleHasPending || timeSlotsHasPending;
-    const isLoading = scheduleLoading || timeSlotsLoading;
+    const isLoading = (scheduleLoading && !scheduleDoc) || (timeSlotsLoading && !timeSlotsDoc);
 
     const scheduleStats = useMemo(() => {
         const allClasses = Object.values(scheduleDays).flat();
         const activeDays = Object.keys(scheduleDays).filter(day => scheduleDays[day]?.length > 0).length;
         const totalSubjects = new Set(allClasses.map(c => c.subject)).size;
         const totalChapters = new Set(allClasses.map(c => c.chapter).filter(Boolean)).size;
-        const totalSlots = timeSlots.length * 5;
+        const totalSlots = timeSlots.length * 5; // Assuming a 5-day week for utilization
         const utilization = totalSlots > 0 ? Math.round((allClasses.length / totalSlots) * 100) : 0;
-        
-        return { 
-            totalClasses: allClasses.length, 
-            activeDays, 
-            totalSubjects, 
-            totalChapters,
-            utilization 
-        };
+        return { totalClasses: allClasses.length, activeDays, totalSubjects, totalChapters, utilization };
     }, [scheduleDays, timeSlots]);
 
     const handleSaveTimeSlots = useCallback(async (newTimeSlots) => {
@@ -189,29 +164,13 @@ const Schedule = ({ setHeaderTitle }) => {
         }
     }, []);
 
-    const handleRefresh = useCallback(async () => {
-        if (!isOnline || refreshing) return;
-        
-        setRefreshing(true);
-        try {
-          await Promise.all([
-            refreshSchedule(),
-            refreshTimeSlots()
-          ]);
-        } catch (error) {
-          console.error('Schedule refresh failed:', error);
-        } finally {
-          setTimeout(() => setRefreshing(false), 500);
-        }
-    }, [isOnline, refreshing, refreshSchedule, refreshTimeSlots]);
-
     const handleOpenModal = useCallback(() => setIsModalOpen(true), []);
     const handleCloseModal = useCallback(() => setIsModalOpen(false), []);
 
-    if (isLoading && !scheduleDoc && !timeSlotsDoc) {
+    if (isLoading) {
         return <MobileSkeletonLoader />;
     }
-    if (!isLoading && (!scheduleDoc || !timeSlotsDoc)) {
+    if (!scheduleDoc || !timeSlotsDoc) {
          return (
             <div className="p-8 text-center">
                 <h2 className="text-xl font-semibold mb-2">System Not Ready</h2>
@@ -229,25 +188,14 @@ const Schedule = ({ setHeaderTitle }) => {
                 </div>
                 {currentUser && (
                     <div className="flex items-center gap-3 mb-4">
-                        <div className="flex-1 grid grid-cols-2 gap-3">
-                             <MobileActionButton onClick={handleOpenModal} icon={IoTimeOutline} fullWidth disabled={!isOnline}>
-                                {isOnline ? 'Edit Periods' : 'Offline'}
-                            </MobileActionButton>
-                            <MobileActionButton to="/schedule-editor" icon={IoCreateOutline} variant="primary" fullWidth disabled={!isOnline}>
-                                {isOnline ? 'Edit Schedule' : 'Offline'}
-                            </MobileActionButton>
-                        </div>
-                        <button
-                            onClick={handleRefresh}
-                            disabled={refreshing || !isOnline}
-                            className="bg-white p-4 rounded-xl border border-gray-200 hover:bg-gray-50 transition-all duration-200 disabled:opacity-50 hover:scale-105 active:scale-95"
-                            aria-label="Refresh Schedule"
-                        >
-                            <IoRefreshOutline 
-                                size={20} 
-                                className={`text-gray-600 transition-transform duration-300 ${refreshing ? 'animate-spin' : ''}`} 
-                            />
-                        </button>
+                        {/* --- CHANGE: Buttons are now always enabled to allow offline actions --- */}
+                        <MobileActionButton onClick={handleOpenModal} icon={IoTimeOutline}>
+                            Edit Periods
+                        </MobileActionButton>
+                        <MobileActionButton to="/schedule-editor" icon={IoCreateOutline} variant="primary" fullWidth>
+                            Edit Schedule
+                        </MobileActionButton>
+                        {/* --- CHANGE: The manual refresh button has been removed. --- */}
                     </div>
                 )}
                 <div className="mb-4">

@@ -120,7 +120,6 @@ const Notices = ({ setHeaderTitle }) => {
     setMounted(true);
   }, [setHeaderTitle]);
 
-  // Memoize query to prevent unnecessary re-creation
   const noticesQuery = useMemo(() => {
     return query(collection(db, "notices"), orderBy("createdAt", sortOrder));
   }, [sortOrder]);
@@ -137,24 +136,18 @@ const Notices = ({ setHeaderTitle }) => {
     deleteItem
   } = useFirestoreCollection(noticesQuery);
 
-  // Debounced search term to reduce filtering frequency
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
   
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedSearchTerm(searchTerm);
     }, 300);
-
     return () => clearTimeout(timer);
   }, [searchTerm]);
 
-  // Enhanced filtering with debounced search
   const filteredNotices = useMemo(() => {
     if (!notices) return [];
-    
     let filtered = notices;
-    
-    // Search filter with debounced term
     if (debouncedSearchTerm.trim()) {
       const searchLower = debouncedSearchTerm.toLowerCase();
       filtered = filtered.filter(notice =>
@@ -162,41 +155,26 @@ const Notices = ({ setHeaderTitle }) => {
         notice.content?.toLowerCase().includes(searchLower)
       );
     }
-    
-    // Priority filter
     if (filterPriority !== 'all') {
       filtered = filtered.filter(notice => notice.priority === filterPriority);
     }
-    
     return filtered;
   }, [debouncedSearchTerm, notices, filterPriority]);
 
-  // Memoized notice statistics with better date handling
   const noticeStats = useMemo(() => {
     if (!notices) return { total: 0, urgent: 0, high: 0, recent: 0 };
-    
     const now = Date.now();
     const oneDayAgo = now - (24 * 60 * 60 * 1000);
-    
     let urgent = 0, high = 0, recent = 0;
-    
     for (const notice of notices) {
       if (notice.priority === 'urgent') urgent++;
       else if (notice.priority === 'high') high++;
-      
       const createdAt = notice.createdAt?.toDate?.()?.getTime();
       if (createdAt && createdAt > oneDayAgo) recent++;
     }
-    
-    return {
-      total: notices.length,
-      urgent,
-      high,
-      recent
-    };
+    return { total: notices.length, urgent, high, recent };
   }, [notices]);
 
-  // Memoized handlers to prevent unnecessary re-renders
   const handleOpenAddModal = useCallback(() => {
     setEditingNotice(EMPTY_NOTICE);
     setEditorOpen(true);
@@ -245,7 +223,6 @@ const Notices = ({ setHeaderTitle }) => {
     setViewMode(mode);
   }, []);
 
-  // Filter options - memoized to prevent recreation
   const filterOptions = useMemo(() => [
     { value: 'all', label: 'All Priorities', color: 'gray' },
     { value: 'normal', label: 'Normal', color: 'slate' },
@@ -254,7 +231,11 @@ const Notices = ({ setHeaderTitle }) => {
     { value: 'urgent', label: 'Urgent', color: 'red' }
   ], []);
 
-  if (notices === null) {
+  // --- CHANGE: The loading logic is slightly simplified here. ---
+  // We use the `loading` flag from the hook, which is true until the first
+  // data (from cache or server) is received. This is more reliable than
+  // checking if `notices === null`.
+  if (loading && (!notices || notices.length === 0)) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
         <div className="max-w-7xl mx-auto px-4 py-8">
@@ -266,14 +247,12 @@ const Notices = ({ setHeaderTitle }) => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 relative overflow-hidden">
-      {/* Background effects - moved to CSS for better performance */}
       <div className="absolute inset-0 opacity-40 pointer-events-none">
         <div className="absolute top-0 left-1/4 w-96 h-96 bg-blue-400/20 rounded-full mix-blend-multiply filter blur-3xl animate-pulse"></div>
         <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-indigo-400/20 rounded-full mix-blend-multiply filter blur-3xl animate-pulse delay-1000"></div>
       </div>
 
       <div className={`relative max-w-7xl mx-auto px-4 py-8 transition-all duration-700 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
-        {/* Header */}
         <div className="mb-8">
           <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
             <div className="space-y-2">
@@ -295,7 +274,6 @@ const Notices = ({ setHeaderTitle }) => {
             )}
           </div>
 
-          {/* Stats Overview */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-8">
             <StatsCard icon={Bell} label="Total Notices" value={noticeStats.total} color="blue" />
             <StatsCard icon={TrendingUp} label="Recent" value={noticeStats.recent} color="green" />
@@ -304,10 +282,8 @@ const Notices = ({ setHeaderTitle }) => {
           </div>
         </div>
         
-        {/* Search and Filter Bar */}
         <div className="bg-white/80 backdrop-blur-xl border border-gray-200/50 rounded-3xl p-6 shadow-lg mb-8">
           <div className="flex flex-col gap-4">
-            {/* Search Bar */}
             <div className="relative">
               <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
               <input
@@ -327,10 +303,8 @@ const Notices = ({ setHeaderTitle }) => {
               )}
             </div>
 
-            {/* Filter Controls */}
             <div className="flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
               <div className="flex flex-wrap gap-3">
-                {/* Priority Filter */}
                 <div className="relative">
                   <button
                     onClick={() => setShowFilters(!showFilters)}
@@ -365,7 +339,6 @@ const Notices = ({ setHeaderTitle }) => {
                   )}
                 </div>
 
-                {/* Active Filters */}
                 {filterPriority !== 'all' && (
                   <div className="flex items-center gap-2 px-3 py-2 bg-blue-100 text-blue-700 rounded-xl text-sm">
                     <span>Priority: {filterPriority}</span>
@@ -377,7 +350,6 @@ const Notices = ({ setHeaderTitle }) => {
               </div>
 
               <div className="flex items-center gap-2">
-                {/* View Mode Toggle */}
                 <div className="flex items-center bg-white/80 border border-gray-200/50 rounded-xl p-1 backdrop-blur-sm">
                   <button
                     onClick={() => handleViewModeChange('grid')}
@@ -397,7 +369,6 @@ const Notices = ({ setHeaderTitle }) => {
                   </button>
                 </div>
 
-                {/* Sort Toggle */}
                 <button
                   onClick={handleSortToggle}
                   className="inline-flex items-center gap-2 px-4 py-2 bg-white/80 border border-gray-200/50 text-gray-700 font-medium rounded-xl hover:bg-white transition-all duration-200 backdrop-blur-sm"
@@ -410,7 +381,6 @@ const Notices = ({ setHeaderTitle }) => {
           </div>
         </div>
 
-        {/* Network Status */}
         <div className="mb-6">
           <NetworkStatus 
             isOnline={isOnline}
@@ -419,8 +389,10 @@ const Notices = ({ setHeaderTitle }) => {
           />
         </div>
 
-        {/* Content Area */}
-        {loading && filteredNotices.length === 0 ? (
+        {/* --- CHANGE: This logic is now more robust --- */}
+        {/* We now explicitly use the `loading` flag from the hook. */}
+        {/* We show the skeleton if `loading` is true AND there are no notices to display yet. */}
+        {loading && (!filteredNotices || filteredNotices.length === 0) ? (
           <NoticePageSkeleton />
         ) : filteredNotices.length > 0 ? (
           <div className={`transition-all duration-300 ${
@@ -452,7 +424,6 @@ const Notices = ({ setHeaderTitle }) => {
         )}
       </div>
 
-      {/* Modal */}
       {isEditorOpen && editingNotice && (
         <NoticeEditorModal 
           isOpen={isEditorOpen}

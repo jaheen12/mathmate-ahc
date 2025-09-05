@@ -6,6 +6,7 @@ import App from './App.jsx';
 import { AuthProvider } from './AuthContext.jsx';
 import { ToastContainer } from 'react-toastify';
 import './firebaseConfig.js'; // Initialize Firebase early
+import * as serviceWorkerRegistration from './serviceWorkerRegistration'; // --- CHANGE: Import the service worker
 
 // CSS imports
 import 'react-loading-skeleton/dist/skeleton.css';
@@ -14,7 +15,7 @@ import 'react-toastify/dist/ReactToastify.css';
 import './index.css';
 import './App.css';
 
-// --- Network Status Context ---
+// --- Network Status Context (No changes needed here, it's well implemented) ---
 const NetworkStatusContext = React.createContext({ isOnline: true });
 export const useNetworkStatus = () => React.useContext(NetworkStatusContext);
 
@@ -95,52 +96,37 @@ const EnhancedToastContainer = () => (
   />
 );
 
-// --- Initialize Application ---
-const initializeApp = async () => {
-  // Slight delay to allow Firebase persistence
-  await new Promise(resolve => setTimeout(resolve, 100));
-
-  // Optional storage estimate logging
-  if (typeof window !== 'undefined' && navigator.storage?.estimate) {
-    try {
-      const estimate = await navigator.storage.estimate();
-      console.log('💾 Storage estimate:', {
-        used: `${(estimate.usage / 1024 / 1024).toFixed(2)} MB`,
-        available: `${(estimate.quota / 1024 / 1024).toFixed(2)} MB`,
-        percentage: `${((estimate.usage / estimate.quota) * 100).toFixed(1)}%`,
-      });
-    } catch (error) {
-      console.log('Storage estimate not available');
-    }
-  }
-
-  // Render the app
-  ReactDOM.createRoot(document.getElementById('root')).render(
-    <React.StrictMode>
-      <BrowserRouter>
-        <NetworkStatusProvider>
-          <AuthProvider>
-            <App />
-            <EnhancedToastContainer />
-          </AuthProvider>
-        </NetworkStatusProvider>
-      </BrowserRouter>
-    </React.StrictMode>
-  );
-};
-
-// --- Initialize with fallback ---
-initializeApp().catch(error => {
-  console.error('Failed to initialize app:', error);
-
-  ReactDOM.createRoot(document.getElementById('root')).render(
-    <React.StrictMode>
-      <BrowserRouter>
+// --- Render Application ---
+// The main app rendering logic is now cleaner and more direct.
+ReactDOM.createRoot(document.getElementById('root')).render(
+  <React.StrictMode>
+    <BrowserRouter>
+      <NetworkStatusProvider>
         <AuthProvider>
           <App />
-          <ToastContainer />
+          <EnhancedToastContainer />
         </AuthProvider>
-      </BrowserRouter>
-    </React.StrictMode>
-  );
-});
+      </NetworkStatusProvider>
+    </BrowserRouter>
+  </React.StrictMode>
+);
+
+
+// --- CHANGE: Register the service worker ---
+// This is the most critical change. This line tells the app to cache its own
+// files (HTML, JS, CSS) so it can load even when the user is offline.
+// Without this, the app itself cannot start without an internet connection.
+serviceWorkerRegistration.register();
+
+// Optional: Log storage usage for debugging purposes
+if (typeof window !== 'undefined' && navigator.storage?.estimate) {
+  navigator.storage.estimate().then(estimate => {
+    console.log('💾 Storage estimate:', {
+      used: `${(estimate.usage / 1024 / 1024).toFixed(2)} MB`,
+      available: `${(estimate.quota / 1024 / 1024).toFixed(2)} MB`,
+      percentage: `${((estimate.usage / estimate.quota) * 100).toFixed(1)}%`,
+    });
+  }).catch(error => {
+    console.log('Storage estimate not available');
+  });
+}
