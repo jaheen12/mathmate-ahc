@@ -1,15 +1,14 @@
 import { initializeApp } from "firebase/app";
-import { getFirestore, enablePersistence } from "firebase/firestore"; // Modified this line
+// --- CHANGE: We need BOTH functions from the main firestore package ---
+import { getFirestore, enableIndexedDbPersistence } from "firebase/firestore"; 
 import { getAuth } from "firebase/auth";
+import { getStorage } from "firebase/storage";
 import dotenv from 'dotenv';
 
-// This line will only work in the Node.js environment (for our script)
-// In the Vite/browser environment, 'process' does not exist.
 if (typeof process !== 'undefined') {
   dotenv.config();
 }
 
-// Check if we are in the Vite (browser) environment
 const isViteEnv = typeof import.meta.env !== 'undefined';
 
 const firebaseConfig = {
@@ -24,24 +23,26 @@ const firebaseConfig = {
 // Initialize Firebase App
 const app = initializeApp(firebaseConfig);
 
-// Initialize Firestore
+// --- THIS IS THE CRITICAL AND CORRECT PATTERN ---
+// 1. Get the Firestore instance first.
 const db = getFirestore(app);
 
-// --- THIS IS THE NEW CODE TO ENABLE OFFLINE CACHING ---
-// It attempts to enable offline persistence for Firestore.
-enablePersistence(db)
+// 2. Then, enable persistence ON THAT INSTANCE.
+enableIndexedDbPersistence(db)
   .catch((err) => {
-    if (err.code == 'failed-precondition') {
+    if (err.code === 'failed-precondition') {
       // This can happen if you have multiple tabs of your app open.
-      // Persistence can only be enabled in one tab at a time.
       console.warn('Firestore persistence failed: Multiple tabs open. Offline features may be limited.');
-    } else if (err.code == 'unimplemented') {
-      // This means the browser is too old or doesn't support the required features.
+    } else if (err.code === 'unimplemented') {
+      // The browser is too old or doesn't support the required features.
       console.error('Firestore persistence is not available in this browser.');
     }
   });
-// --- END OF NEW CODE ---
+// --- END OF CORRECT PATTERN ---
 
+
+// Initialize Firebase Storage
+export const storage = getStorage(app); 
 
 // Initialize Auth
 export const auth = getAuth(app);
