@@ -4,7 +4,8 @@ import { useAuth } from '../AuthContext';
 import { 
     IoGridOutline, IoCalendarOutline, IoDocumentTextOutline, IoPersonOutline, 
     IoLibraryOutline, IoCheckmarkCircleOutline, IoMegaphoneOutline, IoSettingsOutline, 
-    IoLogInOutline, IoLogOutOutline, IoCloseOutline, IoChevronDownOutline
+    IoLogInOutline, IoLogOutOutline, IoCloseOutline, IoChevronDownOutline,
+    IoBarChartOutline
 } from "react-icons/io5";
 import { FaGraduationCap } from "react-icons/fa";
 import { auth } from '../firebaseConfig';
@@ -15,15 +16,17 @@ const Sidebar = ({ isSidebarOpen, toggleSidebar }) => {
     const [isLoggingOut, setIsLoggingOut] = useState(false);
     const [expandedSections, setExpandedSections] = useState({
         academic: true,
-        personal: true
+        personal: true,
+        communication: true
     });
 
     const handleLogout = useCallback(async () => {
         setIsLoggingOut(true);
         try {
             await auth.signOut();
-            toggleSidebar(); // Close sidebar on logout
+            toggleSidebar();
             navigate('/login');
+        // --- THIS IS THE CORRECTED LINE ---
         } catch (error) {
             console.error("Failed to log out", error);
         } finally {
@@ -53,7 +56,8 @@ const Sidebar = ({ isSidebarOpen, toggleSidebar }) => {
             items: [
                 { path: '/notes', icon: IoDocumentTextOutline, label: 'Official Notes' },
                 { path: '/resources', icon: IoLibraryOutline, label: 'Resources' },
-                { path: '/attendance', icon: IoCheckmarkCircleOutline, label: 'Attendance' }
+                { path: '/attendance', icon: IoCheckmarkCircleOutline, label: 'Attendance' },
+                { path: '/progress', icon: IoBarChartOutline, label: 'Study Progress' }
             ]
         },
         {
@@ -67,6 +71,7 @@ const Sidebar = ({ isSidebarOpen, toggleSidebar }) => {
         {
             section: 'communication',
             title: 'Communication',
+            expandable: true,
             items: [
                 { path: '/notices', icon: IoMegaphoneOutline, label: 'Notices' }
             ]
@@ -126,7 +131,7 @@ const Sidebar = ({ isSidebarOpen, toggleSidebar }) => {
                 <nav className="flex-1 p-4 space-y-4 overflow-y-auto">
                     {menuItems.map((section, sectionIndex) => (
                         <div key={sectionIndex} className="space-y-1">
-                            {section.title && (<SectionHeader section={section} title={section.title} />)}
+                            {section.title ? (<SectionHeader section={section} title={section.title} />) : <div className="pt-1"/>}
                             <div className={`space-y-1 transition-all duration-300 overflow-hidden ${section.expandable && !expandedSections[section.section] ? 'max-h-0 opacity-0' : 'max-h-96 opacity-100'}`}>
                                 {section.items.map((item, itemIndex) => (<MenuItem key={itemIndex} item={item} onClick={toggleSidebar} />))}
                             </div>
