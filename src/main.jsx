@@ -3,7 +3,7 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import App from './App.jsx';
-import { AuthProvider } from './AuthContext.jsx';
+import AuthProvider from './AuthContext.jsx';
 import { ToastContainer } from 'react-toastify';
 import './firebaseConfig.js'; // Initialize Firebase early
 import * as serviceWorkerRegistration from './serviceWorkerRegistration'; // --- CHANGE: Import the service worker
