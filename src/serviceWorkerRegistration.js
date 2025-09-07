@@ -12,20 +12,25 @@ const isLocalhost = Boolean(
 
 export function register(config) {
   if ('serviceWorker' in navigator) {
-    const publicUrl = new URL(process.env.PUBLIC_URL || '/', window.location.href);
+    // --- THIS IS THE KEY CHANGE ---
+    // The URL constructor is available in all browsers that support SW.
+    // We remove the reference to 'process.env.PUBLIC_URL' which does not exist in Vite by default.
+    const publicUrl = new URL('/', window.location.href);
+    // --- END OF CHANGE ---
+
     if (publicUrl.origin !== window.location.origin) {
+      // Our service worker won't work if PUBLIC_URL is on a different origin.
       return;
     }
 
     window.addEventListener('load', () => {
+      // In a Vite project, the service worker file is often named 'sw.js'
       const swUrl = `/sw.js`;
 
       if (isLocalhost) {
         checkValidServiceWorker(swUrl, config);
         navigator.serviceWorker.ready.then(() => {
-          console.log(
-            'This web app is being served cache-first by a service worker.'
-          );
+          console.log('This web app is being served cache-first by a service worker.');
         });
       } else {
         registerValidSW(swUrl, config);
@@ -46,16 +51,10 @@ function registerValidSW(swUrl, config) {
         installingWorker.onstatechange = () => {
           if (installingWorker.state === 'installed') {
             if (navigator.serviceWorker.controller) {
-              console.log(
-                'New content is available and will be used when all ' +
-                'tabs for this page are closed.'
-              );
-
-              // --- THIS IS THE CRITICAL CHANGE ---
-              // Dispatch a custom event to notify the app that an update is ready.
+              console.log('New content is available and will be used when all tabs for this page are closed.');
+              
               const event = new CustomEvent('swUpdate', { detail: registration });
               window.dispatchEvent(event);
-              // --- END OF CHANGE ---
 
               if (config && config.onUpdate) {
                 config.onUpdate(registration);

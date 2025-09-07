@@ -12,7 +12,6 @@ import PersonalSubjects from './pages/PersonalSubjects';
 import PersonalChapters from './pages/PersonalChapters';
 import PersonalNoteItems from './pages/PersonalNoteItems';
 import PersonalNoteEditor from './pages/PersonalNoteEditor';
-import PersonalNoteViewer from './pages/PersonalNoteViewer'; // <-- Import the new viewer
 import ResourceCategories from './pages/ResourceCategories';
 import ResourceChapters from './pages/ResourceChapters';
 import ResourceItems from './pages/ResourceItems';
@@ -20,8 +19,13 @@ import Schedule from './pages/Schedule';
 import ScheduleEditor from './pages/ScheduleEditor';
 import Notices from './pages/Notices';
 import Attendance from './pages/Attendance';
-import Settings from './pages/Settings';
 import AdminLogin from './pages/AdminLogin';
+// --- All Feature Imports ---
+import ProgressSubjects from './pages/ProgressSubjects';
+import ProgressChapters from './pages/ProgressChapters';
+import ProgressTopics from './pages/ProgressTopics';
+import ProgressDetails from './pages/ProgressDetails';
+import Settings from './pages/Settings'; // Import the new Settings page
 
 // Component Imports
 import Header from './components/Header';
@@ -29,14 +33,12 @@ import Sidebar from './components/Sidebar';
 import { useTheme } from './hooks/useTheme';
 
 function App() {
-  useTheme(); // Apply the theme globally
+  useTheme();
 
-  // State and logic for handling app updates
   const [updateAvailable, setUpdateAvailable] = useState(false);
   const [waitingWorker, setWaitingWorker] = useState(null);
 
   useEffect(() => {
-    // This custom event is dispatched by our serviceWorkerRegistration.js when a new version is ready.
     const handleUpdate = (event) => {
       const registration = event.detail;
       if (registration && registration.waiting) {
@@ -44,16 +46,13 @@ function App() {
         setUpdateAvailable(true);
       }
     };
-
     window.addEventListener('swUpdate', handleUpdate);
     return () => window.removeEventListener('swUpdate', handleUpdate);
   }, []);
 
   const handleUpdateAccepted = () => {
-    // Tell the new service worker to take over.
     if (waitingWorker) {
       waitingWorker.postMessage({ type: 'SKIP_WAITING' });
-      // The page will reload once the new service worker has taken control.
       navigator.serviceWorker.addEventListener('controllerchange', () => {
         window.location.reload();
       });
@@ -82,38 +81,44 @@ function App() {
         <main className="flex-1 overflow-y-auto">
           <ErrorBoundary>
             <Routes>
+              {/* Core Routes */}
               <Route path="/" element={<Dashboard setHeaderTitle={setHeaderTitle} />} />
+              <Route path="/schedule" element={<Schedule setHeaderTitle={setHeaderTitle} />} />
+              <Route path="/schedule-editor" element={<ScheduleEditor setHeaderTitle={setHeaderTitle} />} />
+              <Route path="/notices" element={<Notices setHeaderTitle={setHeaderTitle} />} />
+              <Route path="/attendance" element={<Attendance setHeaderTitle={setHeaderTitle} />} />
               
+              {/* --- ADDED/VERIFIED SETTINGS ROUTE --- */}
+              <Route path="/settings" element={<Settings setHeaderTitle={setHeaderTitle} />} />
+
               {/* Official Notes Routes */}
               <Route path="/notes" element={<NoteSubjects setHeaderTitle={setHeaderTitle} />} />
               <Route path="/notes/:subjectId" element={<NoteChapters setHeaderTitle={setHeaderTitle} />} />
               <Route path="/notes/:subjectId/:chapterId" element={<NoteItems setHeaderTitle={setHeaderTitle} />} />
               <Route path="/notes/:subjectId/:chapterId/:itemId" element={<NoteViewer setHeaderTitle={setHeaderTitle} />} />
-              
-              {/* Personal Notes Routes --- UPDATED SECTION --- */}
+
+              {/* Personal Notes Routes */}
               <Route path="/personal-notes" element={<PersonalSubjects setHeaderTitle={setHeaderTitle} />} />
               <Route path="/personal-notes/:subjectId" element={<PersonalChapters setHeaderTitle={setHeaderTitle} />} />
               <Route path="/personal-notes/:subjectId/:chapterId" element={<PersonalNoteItems setHeaderTitle={setHeaderTitle} />} />
-              <Route path="/personal-notes/:subjectId/:chapterId/:itemId" element={<PersonalNoteViewer setHeaderTitle={setHeaderTitle} />} />
-              <Route path="/personal-notes/:subjectId/:chapterId/:itemId/edit" element={<PersonalNoteEditor setHeaderTitle={setHeaderTitle} />} />
-              
+              <Route path="/personal-notes/:subjectId/:chapterId/:itemId" element={<PersonalNoteEditor setHeaderTitle={setHeaderTitle} />} />
+
               {/* Resources Routes */}
               <Route path="/resources" element={<ResourceCategories setHeaderTitle={setHeaderTitle} />} />
               <Route path="/resources/:categoryId" element={<ResourceChapters setHeaderTitle={setHeaderTitle} />} />
               <Route path="/resources/:categoryId/:chapterId" element={<ResourceItems setHeaderTitle={setHeaderTitle} />} />
+
+              {/* Study Progress Routes */}
+              <Route path="/progress" element={<ProgressSubjects setHeaderTitle={setHeaderTitle} />} />
+              <Route path="/progress/:subjectId" element={<ProgressChapters setHeaderTitle={setHeaderTitle} />} />
+              <Route path="/progress/:subjectId/:chapterId" element={<ProgressTopics setHeaderTitle={setHeaderTitle} />} />
+              <Route path="/progress/details" element={<ProgressDetails setHeaderTitle={setHeaderTitle} />} />
               
-              {/* Other Main Routes */}
-              <Route path="/schedule" element={<Schedule setHeaderTitle={setHeaderTitle} />} />
-              <Route path="/schedule-editor" element={<ScheduleEditor setHeaderTitle={setHeaderTitle} />} />
-              <Route path="/notices" element={<Notices setHeaderTitle={setHeaderTitle} />} />
-              <Route path="/attendance" element={<Attendance setHeaderTitle={setHeaderTitle} />} />
-              <Route path="/settings" element={<Settings setHeaderTitle={setHeaderTitle} />} />
             </Routes>
           </ErrorBoundary>
         </main>
       </div>
 
-      {/* Update available notification banner */}
       {updateAvailable && (
         <div className="fixed bottom-4 right-4 bg-blue-600 text-white py-2 px-4 rounded-lg shadow-lg flex items-center z-50">
           <p className="mr-4">A new version of the app is available.</p>
