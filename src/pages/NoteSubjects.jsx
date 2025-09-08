@@ -5,7 +5,7 @@ import { useFirestoreCollection } from '../hooks/useFirestoreCollection';
 import NetworkStatus from '../components/NetworkStatus';
 import { toast } from 'react-toastify'; // Import toast for notifications
 
-import { FaPlus, FaSearch, FaTimes } from "react-icons/fa";
+import { FaPlus, FaSearch, FaTimes, FaGripVertical } from "react-icons/fa";
 import { MdDelete, MdEdit, MdSchool, MdCheck } from "react-icons/md";
 import { IoBookOutline, IoLibrary, IoCloudOfflineOutline } from "react-icons/io5";
 import { HiOutlineAcademicCap } from "react-icons/hi";
@@ -35,20 +35,35 @@ const NoteSubjects = ({ setHeaderTitle }) => {
     const [isAdding, setIsAdding] = useState(false);
     const [renamingSubjectId, setRenamingSubjectId] = useState(null);
     const [renamingSubjectName, setRenamingSubjectName] = useState('');
-    const [searchQuery, setSearchQuery] = useState('');
-    const [isSearchFocused, setIsSearchFocused] = useState(false);
+    
+    // Drag and drop state
+    const [draggedItem, setDraggedItem] = useState(null);
+    const [dragOverIndex, setDragOverIndex] = useState(null);
+    const [orderedSubjects, setOrderedSubjects] = useState([]);
     
     useEffect(() => {
         setHeaderTitle('Official Notes');
     }, [setHeaderTitle]);
 
+    // Update ordered subjects when subjects data changes
+    useEffect(() => {
+        if (subjects) {
+            // Sort by order field if it exists, otherwise by creation time or name
+            const sorted = [...subjects].sort((a, b) => {
+                if (a.order !== undefined && b.order !== undefined) {
+                    return a.order - b.order;
+                }
+                if (a.order !== undefined) return -1;
+                if (b.order !== undefined) return 1;
+                return a.name.localeCompare(b.name);
+            });
+            setOrderedSubjects(sorted);
+        }
+    }, [subjects]);
+
     const filteredSubjects = useMemo(() => {
-        if (!subjects) return [];
-        if (!searchQuery.trim()) return subjects;
-        return subjects.filter(subject =>
-            subject.name.toLowerCase().includes(searchQuery.toLowerCase())
-        );
-    }, [subjects, searchQuery]);
+        return orderedSubjects || [];
+    }, [orderedSubjects]);
 
     // --- CHANGE: Added toast notifications for better feedback ---
     const handleSaveSubject = useCallback(async (e) => {
@@ -112,7 +127,71 @@ const NoteSubjects = ({ setHeaderTitle }) => {
         setRenamingSubjectName('');
     }, []);
 
-    const clearSearch = useCallback(() => setSearchQuery(''), []);
+    // Drag and drop handlers
+    const handleDragStart = useCallback((e, subject, index) => {
+        if (!isAdmin) return;
+        setDraggedItem({ subject, index });
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/html', ''); // Required for Firefox
+        
+        // Add some visual feedback
+        setTimeout(() => {
+            e.target.classList.add('opacity-50');
+        }, 0);
+    }, [isAdmin]);
+
+    const handleDragEnd = useCallback((e) => {
+        e.target.classList.remove('opacity-50');
+        setDraggedItem(null);
+        setDragOverIndex(null);
+    }, []);
+
+    const handleDragOver = useCallback((e, index) => {
+        if (!draggedItem) return;
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+        
+        if (index !== draggedItem.index && index !== dragOverIndex) {
+            setDragOverIndex(index);
+        }
+    }, [draggedItem, dragOverIndex]);
+
+    const handleDragLeave = useCallback((e) => {
+        // Only clear if we're leaving the container, not a child element
+        if (!e.currentTarget.contains(e.relatedTarget)) {
+            setDragOverIndex(null);
+        }
+    }, []);
+
+    const handleDrop = useCallback(async (e, dropIndex) => {
+        e.preventDefault();
+        if (!draggedItem || !isAdmin || dropIndex === draggedItem.index) return;
+
+        const newOrderedSubjects = [...orderedSubjects];
+        const [removed] = newOrderedSubjects.splice(draggedItem.index, 1);
+        newOrderedSubjects.splice(dropIndex, 0, removed);
+
+        // Update local state immediately for smooth UX
+        setOrderedSubjects(newOrderedSubjects);
+
+        try {
+            // Update order for all affected subjects
+            const updatePromises = newOrderedSubjects.map((subject, index) => 
+                updateItem(subject.id, { order: index })
+            );
+            
+            await Promise.all(updatePromises);
+            toast.success(isOnline ? "Order updated!" : "Order saved locally!");
+        } catch (error) {
+            // Revert on error
+            setOrderedSubjects([...orderedSubjects]);
+            toast.error("Failed to update order.");
+            console.error(error);
+        }
+
+        setDraggedItem(null);
+        setDragOverIndex(null);
+    }, [draggedItem, orderedSubjects, updateItem, isAdmin, isOnline]);
 
     const cardColors = useMemo(() => [
         'from-blue-400 to-blue-500', 'from-green-400 to-green-500', 'from-purple-400 to-purple-500',
@@ -134,8 +213,8 @@ const NoteSubjects = ({ setHeaderTitle }) => {
         <div className="text-center py-20">
             <div className="relative inline-block"><HiOutlineAcademicCap size={80} className="mx-auto text-gray-300" />{isAdmin && (<div className="absolute -top-2 -right-2 w-8 h-8 bg-gradient-to-r from-green-400 to-blue-400 rounded-full flex items-center justify-center"><FaPlus size={12} className="text-white" /></div>)}</div>
             <h3 className="text-2xl font-bold text-gray-700 mt-6">No Subjects Yet</h3>
-            <p className="text-gray-500 mt-2 max-w-md mx-auto">{searchQuery ? `No subjects match "${searchQuery}". Try a different search term.` : isAdmin ? "Create your first subject to start organizing your notes." : "Official subjects will appear here."}</p>
-            {isAdmin && !searchQuery && (<button onClick={() => setIsAdding(true)} className="mt-6 inline-flex items-center px-6 py-3 bg-gradient-to-r from-green-500 to-blue-500 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200"><FaPlus className="mr-2" size={14} /> Add Your First Subject</button>)}
+            <p className="text-gray-500 mt-2 max-w-md mx-auto">{isAdmin ? "Create your first subject to start organizing your notes." : "Official subjects will appear here."}</p>
+            {isAdmin && (<button onClick={() => setIsAdding(true)} className="mt-6 inline-flex items-center px-6 py-3 bg-gradient-to-r from-green-500 to-blue-500 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200"><FaPlus className="mr-2" size={14} /> Add Your First Subject</button>)}
         </div>
     );
 
@@ -186,13 +265,35 @@ const NoteSubjects = ({ setHeaderTitle }) => {
                 </div>
                 <NetworkStatus isOnline={isOnline} fromCache={fromCache} hasPendingWrites={hasPendingWrites} />
                 {isAdding && isAdmin && <AddSubjectForm />}
-                {subjects?.length > 0 && <SearchBar />}
-                {searchQuery && (<div className="mb-4"><p className="text-sm text-gray-600">{filteredSubjects.length} {filteredSubjects.length === 1 ? 'result' : 'results'} for "{searchQuery}"</p></div>)}
                 <div className="mt-6">
                     {loading && filteredSubjects.length === 0 ? (<SubjectsSkeleton />) : filteredSubjects.length > 0 ? (
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                             {filteredSubjects.map((subject, index) => (
-                                <SubjectCard key={subject.id} subject={subject} index={index} isAdmin={isAdmin} onDelete={handleDelete} onRename={handleRenameClick} onClick={handleSubjectClick} colorClass={cardColors[index % cardColors.length]} isRenaming={renamingSubjectId === subject.id} renamingName={renamingSubjectName} onRenamingNameChange={setRenamingSubjectName} onSaveRename={handleSaveRename} onCancelRename={handleCancelRename} />
+                                <SubjectCard 
+                                    key={subject.id} 
+                                    subject={subject} 
+                                    index={index} 
+                                    isAdmin={isAdmin} 
+                                    onDelete={handleDelete} 
+                                    onRename={handleRenameClick} 
+                                    onClick={handleSubjectClick} 
+                                    colorClass={cardColors[index % cardColors.length]} 
+                                    isRenaming={renamingSubjectId === subject.id} 
+                                    renamingName={renamingSubjectName} 
+                                    onRenamingNameChange={setRenamingSubjectName} 
+                                    onSaveRename={handleSaveRename} 
+                                    onCancelRename={handleCancelRename}
+                                    // Drag and drop props
+                                    draggable={isAdmin}
+                                    onDragStart={(e) => handleDragStart(e, subject, index)}
+                                    onDragEnd={handleDragEnd}
+                                    onDragOver={(e) => handleDragOver(e, index)}
+                                    onDragLeave={handleDragLeave}
+                                    onDrop={(e) => handleDrop(e, index)}
+                                    isDraggedOver={dragOverIndex === index}
+                                    isDragging={draggedItem?.subject.id === subject.id}
+                                    canReorder={true}
+                                />
                             ))}
                         </div>
                     ) : (<EmptyState />)}
@@ -202,14 +303,45 @@ const NoteSubjects = ({ setHeaderTitle }) => {
     );
 };
 
-const SubjectCard = ({ subject, isAdmin, onDelete, onRename, onClick, colorClass, isRenaming, renamingName, onRenamingNameChange, onSaveRename, onCancelRename }) => {
+const SubjectCard = ({ 
+    subject, 
+    isAdmin, 
+    onDelete, 
+    onRename, 
+    onClick, 
+    colorClass, 
+    isRenaming, 
+    renamingName, 
+    onRenamingNameChange, 
+    onSaveRename, 
+    onCancelRename,
+    // Drag and drop props
+    draggable,
+    onDragStart,
+    onDragEnd,
+    onDragOver,
+    onDragLeave,
+    onDrop,
+    isDraggedOver,
+    isDragging,
+    canReorder
+}) => {
     const isPending = subject._metadata?.hasPendingWrites;
 
     if (isRenaming && isAdmin) {
         return (
             <div className="bg-white rounded-2xl border-2 border-green-500 shadow-lg p-6">
                 <form onSubmit={onSaveRename} className="space-y-3">
-                    <input type="text" value={renamingName} onChange={(e) => onRenamingNameChange(e.target.value)} className="w-full px-3 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent" autoFocus maxLength={50} disabled={!isAdmin} />
+                    <textarea 
+                        value={renamingName} 
+                        onChange={(e) => onRenamingNameChange(e.target.value)} 
+                        className="w-full px-3 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent resize-none" 
+                        autoFocus 
+                        maxLength={50} 
+                        disabled={!isAdmin}
+                        rows={2}
+                        style={{minHeight: '60px'}}
+                    />
                     <div className="flex gap-2">
                         <button type="submit" disabled={!renamingName.trim() || !isAdmin} className="flex-1 px-3 py-2 bg-green-500 text-white rounded-xl hover:bg-green-600 transition-colors disabled:opacity-50"><MdCheck size={16} className="mx-auto" /></button>
                         <button type="button" onClick={onCancelRename} className="flex-1 px-3 py-2 text-gray-500 border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors"><FaTimes size={14} className="mx-auto" /></button>
@@ -220,16 +352,65 @@ const SubjectCard = ({ subject, isAdmin, onDelete, onRename, onClick, colorClass
     }
 
     return (
-        <div className={`group relative bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-lg transition-all duration-300 cursor-pointer transform hover:scale-105 ${isPending ? 'opacity-60' : ''}`} onClick={() => onClick(subject.id)}>
-            <div className="p-6">
-                <div className="flex items-center space-x-4 mb-3"><div className={`w-12 h-12 bg-gradient-to-r ${colorClass} rounded-2xl flex items-center justify-center shadow-lg`}><MdSchool size={24} className="text-white" /></div><div className="flex-1 min-w-0"><h3 className="text-lg font-semibold text-gray-800 group-hover:text-green-600 transition-colors truncate">{subject.name}</h3>{isPending && <span className="text-xs text-gray-500">Saving...</span>}</div></div>
-                <div className="flex items-center text-sm text-gray-500"><IoBookOutline size={14} className="mr-1" /><span>Tap to view notes</span></div>
+        <div 
+            className={`group relative bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-lg transition-all duration-300 cursor-pointer transform hover:scale-105 ${isPending ? 'opacity-60' : ''} ${isDraggedOver ? 'border-green-400 border-2 scale-105 shadow-lg' : ''} ${isDragging ? 'opacity-50 rotate-2' : ''}`} 
+            onClick={() => onClick(subject.id)}
+            draggable={draggable}
+            onDragStart={onDragStart}
+            onDragEnd={onDragEnd}
+            onDragOver={onDragOver}
+            onDragLeave={onDragLeave}
+            onDrop={onDrop}
+        >
+            <div className="p-6 relative">
+                {/* Drag handle - Always visible for admins */}
+                {isAdmin && canReorder && (
+                    <div className="absolute top-3 left-3 cursor-grab active:cursor-grabbing bg-gray-100 hover:bg-gray-200 rounded-lg p-2 shadow-sm z-10 transition-colors"
+                         onMouseDown={(e) => e.stopPropagation()}
+                         title="Drag to reorder">
+                        <FaGripVertical size={18} className="text-gray-600" />
+                    </div>
+                )}
+                <div className="flex items-start space-x-4 mb-3 mt-2">
+                    <div className={`w-12 h-12 bg-gradient-to-r ${colorClass} rounded-2xl flex items-center justify-center shadow-lg flex-shrink-0 mt-1`}>
+                        <MdSchool size={24} className="text-white" />
+                    </div>
+                    <div className="flex-1 min-w-0 pr-8">
+                        <h3 className="text-lg font-semibold text-gray-800 group-hover:text-green-600 transition-colors leading-tight break-words"
+                            style={{
+                                wordBreak: 'break-word',
+                                overflowWrap: 'break-word',
+                                hyphens: 'auto'
+                            }}>
+                            {subject.name}
+                        </h3>
+                        {isPending && <span className="text-xs text-gray-500">Saving...</span>}
+                    </div>
+                </div>
+                <div className="flex items-center text-sm text-gray-500">
+                    <IoBookOutline size={14} className="mr-1" />
+                    <span>Tap to view notes</span>
+                </div>
             </div>
-            {/* --- CHANGE: Action buttons now appear offline for admins --- */}
+            {/* Action buttons - Always visible for admins */}
             {isAdmin && (
-                <div className="absolute top-3 right-3 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button onClick={(e) => { e.stopPropagation(); onRename(subject); }} className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-colors" title="Rename subject"><MdEdit size={16} /></button>
-                    <button onClick={(e) => { e.stopPropagation(); onDelete(subject.id); }} className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-colors" title="Delete subject"><MdDelete size={16} /></button>
+                <div className="absolute top-3 right-3 flex items-center gap-1 z-10">
+                    <button 
+                        onClick={(e) => { e.stopPropagation(); onRename(subject); }} 
+                        className="p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-colors bg-gray-100 hover:bg-gray-200 shadow-sm" 
+                        title="Rename subject"
+                        onMouseDown={(e) => e.stopPropagation()}
+                    >
+                        <MdEdit size={16} />
+                    </button>
+                    <button 
+                        onClick={(e) => { e.stopPropagation(); onDelete(subject.id); }} 
+                        className="p-2 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-xl transition-colors bg-gray-100 hover:bg-gray-200 shadow-sm" 
+                        title="Delete subject"
+                        onMouseDown={(e) => e.stopPropagation()}
+                    >
+                        <MdDelete size={16} />
+                    </button>
                 </div>
             )}
             {isPending && (<div className="absolute bottom-3 right-3"><div className="w-2 h-2 bg-orange-400 rounded-full animate-pulse"></div></div>)}

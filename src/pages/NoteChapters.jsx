@@ -6,7 +6,7 @@ import { useFirestoreDocument } from '../hooks/useFirestoreDocument';
 import NetworkStatus from '../components/NetworkStatus';
 import { toast } from 'react-toastify';
 
-import { FaPlus, FaSearch, FaBookOpen, FaTimes } from "react-icons/fa";
+import { FaPlus, FaBookOpen, FaTimes, FaGripVertical } from "react-icons/fa";
 import { MdDelete, MdEdit, MdCheck } from "react-icons/md";
 import { IoArrowBack, IoBook, IoCloudOfflineOutline } from "react-icons/io5";
 import { HiOutlineCollection } from "react-icons/hi";
@@ -42,16 +42,32 @@ const NoteChapters = ({ setHeaderTitle }) => {
     const [isAdding, setIsAdding] = useState(false);
     const [renamingChapterId, setRenamingChapterId] = useState(null);
     const [renamingChapterName, setRenamingChapterName] = useState('');
-    const [searchTerm, setSearchTerm] = useState('');
     const [hoveredChapter, setHoveredChapter] = useState(null);
 
+    // Drag and drop state
+    const [draggedItem, setDraggedItem] = useState(null);
+    const [dragOverIndex, setDragOverIndex] = useState(null);
+    const [orderedChapters, setOrderedChapters] = useState([]);
+
+    // Update ordered chapters when chapters data changes
+    useEffect(() => {
+        if (chapters) {
+            // Sort by order field if it exists, otherwise by creation time or name
+            const sorted = [...chapters].sort((a, b) => {
+                if (a.order !== undefined && b.order !== undefined) {
+                    return a.order - b.order;
+                }
+                if (a.order !== undefined) return -1;
+                if (b.order !== undefined) return 1;
+                return a.name.localeCompare(b.name);
+            });
+            setOrderedChapters(sorted);
+        }
+    }, [chapters]);
+
     const filteredChapters = useMemo(() => {
-        if (!chapters) return [];
-        if (!searchTerm.trim()) return chapters;
-        return chapters.filter(chapter =>
-            chapter.name.toLowerCase().includes(searchTerm.toLowerCase())
-        );
-    }, [chapters, searchTerm]);
+        return orderedChapters || [];
+    }, [orderedChapters]);
 
     // --- CHANGE: Added user feedback with toast notifications ---
     const handleSaveChapter = useCallback(async () => {
@@ -108,7 +124,71 @@ const NoteChapters = ({ setHeaderTitle }) => {
         }
     }, [isAdding, renamingChapterId]);
 
-    const clearSearch = useCallback(() => setSearchTerm(''), []);
+    // Drag and drop handlers
+    const handleDragStart = useCallback((e, chapter, index) => {
+        if (!isAdmin) return;
+        setDraggedItem({ chapter, index });
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/html', ''); // Required for Firefox
+        
+        // Add some visual feedback
+        setTimeout(() => {
+            e.target.classList.add('opacity-50');
+        }, 0);
+    }, [isAdmin]);
+
+    const handleDragEnd = useCallback((e) => {
+        e.target.classList.remove('opacity-50');
+        setDraggedItem(null);
+        setDragOverIndex(null);
+    }, []);
+
+    const handleDragOver = useCallback((e, index) => {
+        if (!draggedItem) return;
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+        
+        if (index !== draggedItem.index && index !== dragOverIndex) {
+            setDragOverIndex(index);
+        }
+    }, [draggedItem, dragOverIndex]);
+
+    const handleDragLeave = useCallback((e) => {
+        // Only clear if we're leaving the container, not a child element
+        if (!e.currentTarget.contains(e.relatedTarget)) {
+            setDragOverIndex(null);
+        }
+    }, []);
+
+    const handleDrop = useCallback(async (e, dropIndex) => {
+        e.preventDefault();
+        if (!draggedItem || !isAdmin || dropIndex === draggedItem.index) return;
+
+        const newOrderedChapters = [...orderedChapters];
+        const [removed] = newOrderedChapters.splice(draggedItem.index, 1);
+        newOrderedChapters.splice(dropIndex, 0, removed);
+
+        // Update local state immediately for smooth UX
+        setOrderedChapters(newOrderedChapters);
+
+        try {
+            // Update order for all affected chapters
+            const updatePromises = newOrderedChapters.map((chapter, index) => 
+                updateItem(chapter.id, { order: index })
+            );
+            
+            await Promise.all(updatePromises);
+            toast.success(isOnline ? "Order updated!" : "Order saved locally!");
+        } catch (error) {
+            // Revert on error
+            setOrderedChapters([...orderedChapters]);
+            toast.error("Failed to update order.");
+            console.error(error);
+        }
+
+        setDraggedItem(null);
+        setDragOverIndex(null);
+    }, [draggedItem, orderedChapters, updateItem, isAdmin, isOnline]);
 
     const ChaptersSkeleton = () => (
         <div className="space-y-3">
@@ -121,9 +201,8 @@ const NoteChapters = ({ setHeaderTitle }) => {
     const EmptyState = () => (
         <div className="text-center py-20">
             <div className="relative inline-block"><HiOutlineCollection size={80} className="mx-auto text-gray-300" />{isAdmin && (<div className="absolute -top-2 -right-2 w-6 h-6 bg-purple-500 rounded-full opacity-20 animate-ping"></div>)}</div>
-            <h3 className="text-2xl font-bold text-gray-700 mt-6">{searchTerm ? 'No Matching Chapters' : 'No Chapters Yet'}</h3>
-            <p className="text-gray-500 mt-2 max-w-md mx-auto">{searchTerm ? `No chapters found matching "${searchTerm}". Try a different search term.` : isAdmin ? "Start organizing your content by creating the first chapter." : "Chapters will appear here."}</p>
-            {searchTerm && (<button onClick={clearSearch} className="mt-4 px-4 py-2 text-purple-600 hover:text-purple-700 font-medium transition-colors">Clear Search</button>)}
+            <h3 className="text-2xl font-bold text-gray-700 mt-6">No Chapters Yet</h3>
+            <p className="text-gray-500 mt-2 max-w-md mx-auto">{isAdmin ? "Start organizing your content by creating the first chapter." : "Chapters will appear here."}</p>
         </div>
     );
 
@@ -160,7 +239,7 @@ const NoteChapters = ({ setHeaderTitle }) => {
                             <div className="p-3 bg-gradient-to-r from-purple-500 to-blue-500 rounded-xl shadow-lg"><IoBook size={24} className="text-white" /></div>
                             <div>
                                 <h1 className="text-3xl font-bold text-gray-800">{subjectDoc?.name || 'Chapters'}</h1>
-                                <p className="text-gray-500 text-sm">{chapters?.length || 0} {chapters?.length === 1 ? 'chapter' : 'chapters'}{filteredChapters.length !== (chapters?.length || 0) && ` • ${filteredChapters.length} shown`}</p>
+                                <p className="text-gray-500 text-sm">{chapters?.length || 0} {chapters?.length === 1 ? 'chapter' : 'chapters'}</p>
                             </div>
                         </div>
                     </div>
@@ -173,19 +252,39 @@ const NoteChapters = ({ setHeaderTitle }) => {
                     )}
                 </div>
                 <NetworkStatus isOnline={isOnline} fromCache={fromCache} hasPendingWrites={hasPendingWrites} />
-                {chapters?.length > 0 && (
-                    <div className="relative mb-6">
-                        <FaSearch className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
-                        <input type="text" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} placeholder="Search chapters..." className="w-full pl-12 pr-12 py-3 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none transition-all shadow-sm" />
-                        {searchTerm && (<button onClick={clearSearch} className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"><FaTimes size={14} /></button>)}
-                    </div>
-                )}
                 {isAdding && isAdmin && <AddChapterForm />}
                 <div className="mt-6">
                     {loading && filteredChapters.length === 0 ? (<ChaptersSkeleton />) : filteredChapters.length > 0 ? (
                         <div className="space-y-3">
                             {filteredChapters.map((chapter, index) => (
-                                <ChapterItem key={chapter.id} chapter={chapter} index={index} subjectId={subjectId} isAdmin={isAdmin} onNavigate={navigate} onRename={handleRenameClick} onDelete={handleDelete} isRenaming={renamingChapterId === chapter.id} renamingValue={renamingChapterName} setRenamingValue={setRenamingChapterName} onSaveRename={handleSaveRename} onCancelRename={() => { setRenamingChapterId(null); setRenamingChapterName(''); }} handleKeyPress={handleKeyPress} hoveredChapter={hoveredChapter} setHoveredChapter={setHoveredChapter} />
+                                <ChapterItem 
+                                    key={chapter.id} 
+                                    chapter={chapter} 
+                                    index={index} 
+                                    subjectId={subjectId} 
+                                    isAdmin={isAdmin} 
+                                    onNavigate={navigate} 
+                                    onRename={handleRenameClick} 
+                                    onDelete={handleDelete} 
+                                    isRenaming={renamingChapterId === chapter.id} 
+                                    renamingValue={renamingChapterName} 
+                                    setRenamingValue={setRenamingChapterName} 
+                                    onSaveRename={handleSaveRename} 
+                                    onCancelRename={() => { setRenamingChapterId(null); setRenamingChapterName(''); }} 
+                                    handleKeyPress={handleKeyPress} 
+                                    hoveredChapter={hoveredChapter} 
+                                    setHoveredChapter={setHoveredChapter}
+                                    // Drag and drop props
+                                    draggable={isAdmin}
+                                    onDragStart={(e) => handleDragStart(e, chapter, index)}
+                                    onDragEnd={handleDragEnd}
+                                    onDragOver={(e) => handleDragOver(e, index)}
+                                    onDragLeave={handleDragLeave}
+                                    onDrop={(e) => handleDrop(e, index)}
+                                    isDraggedOver={dragOverIndex === index}
+                                    isDragging={draggedItem?.chapter.id === chapter.id}
+                                    canReorder={true}
+                                />
                             ))}
                         </div>
                     ) : (<EmptyState />)}
@@ -195,12 +294,57 @@ const NoteChapters = ({ setHeaderTitle }) => {
     );
 };
 
-const ChapterItem = ({ chapter, index, subjectId, isAdmin, onNavigate, onRename, onDelete, isRenaming, renamingValue, setRenamingValue, onSaveRename, onCancelRename, handleKeyPress, hoveredChapter, setHoveredChapter }) => {
+const ChapterItem = ({ 
+    chapter, 
+    index, 
+    subjectId, 
+    isAdmin, 
+    onNavigate, 
+    onRename, 
+    onDelete, 
+    isRenaming, 
+    renamingValue, 
+    setRenamingValue, 
+    onSaveRename, 
+    onCancelRename, 
+    handleKeyPress, 
+    hoveredChapter, 
+    setHoveredChapter,
+    // Drag and drop props
+    draggable,
+    onDragStart,
+    onDragEnd,
+    onDragOver,
+    onDragLeave,
+    onDrop,
+    isDraggedOver,
+    isDragging,
+    canReorder
+}) => {
     const isPending = chapter._metadata?.hasPendingWrites;
     const isHovered = hoveredChapter === chapter.id;
 
     return (
-        <div className={`group relative bg-white/80 backdrop-blur-sm rounded-xl border transition-all duration-300 ${isPending ? 'opacity-60 border-yellow-200 shadow-yellow-100' : isHovered ? 'border-purple-300 shadow-purple-100 shadow-lg transform translate-x-1' : 'border-gray-100 shadow-sm hover:shadow-lg hover:border-gray-200'}`} onMouseEnter={() => setHoveredChapter(chapter.id)} onMouseLeave={() => setHoveredChapter(null)}>
+        <div 
+            className={`group relative bg-white/80 backdrop-blur-sm rounded-xl border transition-all duration-300 ${isPending ? 'opacity-60 border-yellow-200 shadow-yellow-100' : isHovered ? 'border-purple-300 shadow-purple-100 shadow-lg transform translate-x-1' : 'border-gray-100 shadow-sm hover:shadow-lg hover:border-gray-200'} ${isDraggedOver ? 'border-purple-400 border-2 scale-105 shadow-lg' : ''} ${isDragging ? 'opacity-50 rotate-1' : ''}`} 
+            onMouseEnter={() => setHoveredChapter(chapter.id)} 
+            onMouseLeave={() => setHoveredChapter(null)}
+            draggable={draggable}
+            onDragStart={onDragStart}
+            onDragEnd={onDragEnd}
+            onDragOver={onDragOver}
+            onDragLeave={onDragLeave}
+            onDrop={onDrop}
+        >
+            {/* Drag handle - Always visible for admins */}
+            {isAdmin && canReorder && !isRenaming && (
+                <div className="absolute top-3 left-3 cursor-grab active:cursor-grabbing bg-gray-100 hover:bg-gray-200 rounded-lg p-2 shadow-sm z-10 transition-colors"
+                     onMouseDown={(e) => e.stopPropagation()}
+                     title="Drag to reorder">
+                    <FaGripVertical size={16} className="text-gray-600" />
+                </div>
+            )}
+
             {isRenaming && isAdmin && (
                 <div className="absolute inset-0 bg-white rounded-xl border-2 border-purple-500 shadow-lg z-10 p-4">
                     <div className="flex flex-col gap-3 h-full justify-center">
@@ -213,16 +357,31 @@ const ChapterItem = ({ chapter, index, subjectId, isAdmin, onNavigate, onRename,
                     </div>
                 </div>
             )}
-            <div className="flex justify-between items-center p-5">
+            
+            <div className="flex justify-between items-center p-5 pl-16">
                 <div onClick={() => !isRenaming && onNavigate(`/notes/${subjectId}/${chapter.id}`)} className="cursor-pointer flex items-center space-x-4 flex-grow">
                     <div className="flex items-center space-x-3"><div className={`w-8 h-8 rounded-full border-2 flex items-center justify-center text-sm font-bold transition-all duration-200 ${isHovered ? 'bg-gradient-to-r from-purple-500 to-blue-500 border-purple-500 text-white' : 'bg-white border-gray-300 text-gray-600'}`}>{index + 1}</div><FaBookOpen className={`transition-colors duration-200 ${isHovered ? 'text-purple-500' : 'text-gray-400'}`} size={16} /></div>
-                    <div className="flex-1 min-w-0"><h3 className={`font-medium text-lg truncate transition-colors duration-200 ${isHovered ? 'text-purple-600' : 'text-gray-800'}`}>{chapter.name}</h3>{isPending && (<div className="flex items-center gap-1 mt-1"><div className="w-1 h-1 bg-yellow-500 rounded-full animate-pulse"></div><span className="text-xs text-yellow-600">Syncing...</span></div>)}</div>
+                    <div className="flex-1 min-w-0"><h3 className={`font-medium text-lg break-words transition-colors duration-200 ${isHovered ? 'text-purple-600' : 'text-gray-800'}`} style={{wordBreak: 'break-word', overflowWrap: 'break-word', hyphens: 'auto'}}>{chapter.name}</h3>{isPending && (<div className="flex items-center gap-1 mt-1"><div className="w-1 h-1 bg-yellow-500 rounded-full animate-pulse"></div><span className="text-xs text-yellow-600">Syncing...</span></div>)}</div>
                 </div>
-                {/* --- CHANGE: Action buttons now work offline --- */}
+                {/* Action buttons - Always visible for admins */}
                 {isAdmin && !isRenaming && (
-                    <div className={`flex items-center space-x-2 transition-all duration-200 ${isHovered ? 'opacity-100 transform scale-100' : 'opacity-0 transform scale-95'}`}>
-                        <button onClick={(e) => { e.stopPropagation(); onRename(chapter); }} disabled={!isAdmin} className="p-2 text-gray-500 hover:text-purple-600 rounded-full hover:bg-purple-50 disabled:opacity-50 transition-all duration-200 transform hover:scale-110"><MdEdit size={18} /></button>
-                        <button onClick={(e) => { e.stopPropagation(); onDelete(chapter.id); }} disabled={!isAdmin} className="p-2 text-gray-500 hover:text-red-600 rounded-full hover:bg-red-50 disabled:opacity-50 transition-all duration-200 transform hover:scale-110"><MdDelete size={18} /></button>
+                    <div className="flex items-center space-x-2 z-10">
+                        <button 
+                            onClick={(e) => { e.stopPropagation(); onRename(chapter); }} 
+                            disabled={!isAdmin} 
+                            className="p-2 text-gray-600 hover:text-purple-600 rounded-lg hover:bg-purple-50 disabled:opacity-50 transition-all duration-200 transform hover:scale-110 bg-gray-100 hover:bg-gray-200"
+                            onMouseDown={(e) => e.stopPropagation()}
+                        >
+                            <MdEdit size={18} />
+                        </button>
+                        <button 
+                            onClick={(e) => { e.stopPropagation(); onDelete(chapter.id); }} 
+                            disabled={!isAdmin} 
+                            className="p-2 text-gray-600 hover:text-red-600 rounded-lg hover:bg-red-50 disabled:opacity-50 transition-all duration-200 transform hover:scale-110 bg-gray-100 hover:bg-gray-200"
+                            onMouseDown={(e) => e.stopPropagation()}
+                        >
+                            <MdDelete size={18} />
+                        </button>
                     </div>
                 )}
             </div>
