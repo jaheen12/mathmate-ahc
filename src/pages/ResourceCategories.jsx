@@ -4,14 +4,14 @@ import { useAuth } from '../AuthContext';
 import { useFirestoreCollection } from '../hooks/useFirestoreCollection';
 import NetworkStatus from '../components/NetworkStatus';
 import { toast } from 'react-toastify';
-
-import { FaPlus, FaSearch, FaFolder, FaTimes } from "react-icons/fa";
-import { MdDelete, MdEdit, MdCheck } from "react-icons/md";
-import { IoLibraryOutline, IoCloudOfflineOutline } from "react-icons/io5";
 import Skeleton from 'react-loading-skeleton';
 
+import { FaPlus, FaFolder, FaTimes } from "react-icons/fa";
+import { MdDelete, MdEdit, MdCheck } from "react-icons/md";
+import { IoLibraryOutline, IoCloudOfflineOutline } from "react-icons/io5";
+import { HiPlus } from 'react-icons/hi2';
+
 const ResourceCategories = ({ setHeaderTitle }) => {
-  // --- CHANGE: Simplified data hook ---
   const { 
     data: categories, 
     loading, 
@@ -31,23 +31,13 @@ const ResourceCategories = ({ setHeaderTitle }) => {
   const [isAdding, setIsAdding] = useState(false);
   const [renamingCategoryId, setRenamingCategoryId] = useState(null);
   const [renamingCategoryName, setRenamingCategoryName] = useState('');
-  const [searchTerm, setSearchTerm] = useState('');
   
   const navigate = useNavigate();
   const { currentUser } = useAuth();
-  const isAdmin = !!currentUser;
 
-  const filteredCategories = useMemo(() => {
-    if (!categories) return [];
-    return categories.filter(category =>
-      category.name.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-  }, [categories, searchTerm]);
-
-  // --- Handlers with toast feedback and offline support ---
   const handleSaveCategory = useCallback(async (e) => {
     e.preventDefault();
-    if (newCategoryName.trim() === '' || !isAdmin) return;
+    if (newCategoryName.trim() === '') return;
     try {
         await addItem({ name: newCategoryName.trim() });
         toast.success(isOnline ? "Category added!" : "Category saved locally!");
@@ -55,36 +45,24 @@ const ResourceCategories = ({ setHeaderTitle }) => {
         setIsAdding(false);
     } catch (error) {
         toast.error("Failed to add category.");
-        console.error(error);
     }
-  }, [newCategoryName, addItem, isAdmin, isOnline]);
+  }, [newCategoryName, addItem, isOnline]);
 
   const handleDelete = useCallback(async (categoryId) => {
-    if (!isAdmin) return;
-    if (window.confirm('Are you sure you want to delete this category and all resources inside it?')) {
-        try {
-            await deleteItem(categoryId, false);
-            toast.success(isOnline ? "Category deleted!" : "Deletion saved locally!");
-        } catch (error) {
-            toast.error("Failed to delete category.");
-            console.error(error);
-        }
+    if (window.confirm('Are you sure you want to delete this category?')) {
+        await deleteItem(categoryId, true);
+        toast.success(isOnline ? "Category deleted!" : "Deletion saved locally!");
     }
-  }, [deleteItem, isAdmin, isOnline]);
+  }, [deleteItem, isOnline]);
 
   const handleSaveRename = useCallback(async (e) => {
     e.preventDefault();
-    if (renamingCategoryName.trim() === '' || !isAdmin) return;
-    try {
-        await updateItem(renamingCategoryId, { name: renamingCategoryName.trim() });
-        toast.success(isOnline ? "Category renamed!" : "Rename saved locally!");
-        setRenamingCategoryId(null);
-        setRenamingCategoryName('');
-    } catch (error) {
-        toast.error("Failed to rename category.");
-        console.error(error);
-    }
-  }, [renamingCategoryName, renamingCategoryId, updateItem, isAdmin, isOnline]);
+    if (renamingCategoryName.trim() === '') return;
+    await updateItem(renamingCategoryId, { name: renamingCategoryName.trim() });
+    toast.success(isOnline ? "Category renamed!" : "Rename saved locally!");
+    setRenamingCategoryId(null);
+    setRenamingCategoryName('');
+  }, [renamingCategoryName, renamingCategoryId, updateItem, isOnline]);
 
   const handleRenameClick = useCallback((category) => {
     setRenamingCategoryId(category.id);
@@ -92,90 +70,48 @@ const ResourceCategories = ({ setHeaderTitle }) => {
   }, []);
   
   const handleNavigate = useCallback((categoryId) => {
-    if (!renamingCategoryId) { // Prevent navigation while renaming
+    if (!renamingCategoryId) {
         navigate(`/resources/${categoryId}`);
     }
   }, [navigate, renamingCategoryId]);
 
-  const cancelAdd = () => {
-    setIsAdding(false);
-    setNewCategoryName('');
-  };
+  const cancelAdd = () => { setIsAdding(false); setNewCategoryName(''); };
+  const cancelRename = () => { setRenamingCategoryId(null); setRenamingCategoryName(''); };
 
-  const cancelRename = () => {
-    setRenamingCategoryId(null);
-    setRenamingCategoryName('');
-  };
-
-  // --- UI Components ---
   const CategoriesSkeleton = () => (
-    <div className="space-y-3">
-        {Array(4).fill().map((_, i) => (
-            <div key={i} className="p-6 bg-white rounded-xl shadow-sm border border-gray-100"><Skeleton height={28} width="60%" /></div>
-        ))}
-    </div>
+    <div className="space-y-2">{Array(4).fill(0).map((_, i) => (<div key={i} className="p-3 bg-white rounded-lg border border-gray-100 flex items-center gap-3"><div className="w-10 h-10 bg-gray-200 rounded-lg"></div><div className="flex-1 h-4 bg-gray-200 rounded"></div></div>))}</div>
   );
 
   const EmptyState = () => (
-    <div className="text-center py-20">
-        <IoLibraryOutline size={80} className="mx-auto text-gray-300" />
-        <h3 className="text-2xl font-bold text-gray-700 mt-4">No Resource Categories</h3>
-        <p className="text-gray-500 mt-2">Create the first category to start adding resources.</p>
-    </div>
+    <div className="text-center py-12 px-4"><div className="w-16 h-16 bg-gradient-to-br from-blue-50 to-indigo-100 rounded-2xl mx-auto flex items-center justify-center mb-4"><IoLibraryOutline size={28} className="text-blue-500" /></div><h3 className="text-lg font-semibold text-gray-900 mb-2">No Resource Categories</h3><p className="text-sm text-gray-600 mb-6 max-w-xs mx-auto leading-relaxed">{currentUser ? "Create your first category to start adding resources." : "Resources will appear here once added."}</p>{currentUser && (<button onClick={() => setIsAdding(true)} className="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-all hover:shadow-md"><HiPlus className="mr-1.5" size={16} />Add Category</button>)}</div>
   );
 
   if (loading && !categories) {
-      return (
-          <div className="max-w-6xl mx-auto p-6"><CategoriesSkeleton /></div>
-      );
+      return <div className="min-h-screen bg-gray-50"><div className="px-3 pt-4 pb-6 max-w-2xl mx-auto"><CategoriesSkeleton /></div></div>;
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 p-6">
-      <div className="max-w-6xl mx-auto">
-        <div className="flex justify-between items-center mb-6">
-            <h1 className="text-3xl font-bold text-gray-800">Resources</h1>
-            {isAdmin && !isAdding && (
-              <button onClick={() => setIsAdding(true)} className="inline-flex items-center px-6 py-3 bg-blue-600 text-white font-semibold rounded-xl shadow-lg hover:bg-blue-700 disabled:opacity-50 transform hover:scale-105 transition-all">
-                <FaPlus className="mr-2" /> Add Category
-              </button>
-            )}
+    <div className="min-h-screen bg-gray-50">
+      <div className="px-3 pt-4 pb-6 max-w-2xl mx-auto">
+        <div className="flex items-center justify-between mb-5">
+            <div className="flex-1 min-w-0"><h1 className="text-xl font-bold text-gray-900">Resources</h1><p className="text-sm text-gray-600">Shared documents & links</p></div>
+            {currentUser && !isAdding && (<button onClick={() => setIsAdding(true)} className="flex items-center px-3 py-1.5 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-all hover:shadow-md ml-3 flex-shrink-0"><HiPlus className="mr-1.5" size={14} /><span className="hidden sm:inline">Add Category</span><span className="sm:hidden">Add</span></button>)}
         </div>
         <NetworkStatus isOnline={isOnline} fromCache={fromCache} hasPendingWrites={hasPendingWrites} />
         
-        {/* --- CHANGE: Added full Add/Rename Forms --- */}
-        {isAdding && (
-            <form onSubmit={handleSaveCategory} className="my-6 p-4 bg-white rounded-xl shadow-md border animate-in fade-in-0 duration-300">
-                <h4 className="font-semibold mb-2">Add New Category</h4>
-                <div className="flex gap-2">
-                    <input type="text" value={newCategoryName} onChange={(e) => setNewCategoryName(e.target.value)} placeholder="Enter category name..." className="flex-1 p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" autoFocus />
-                    <button type="button" onClick={cancelAdd} className="px-4 py-2 bg-gray-200 text-gray-700 font-semibold rounded-lg hover:bg-gray-300"><FaTimes /></button>
-                    <button type="submit" disabled={!newCategoryName.trim()} className="px-4 py-2 bg-green-500 text-white font-semibold rounded-lg hover:bg-green-600 disabled:opacity-50 flex items-center gap-1">
-                        {isOnline ? <MdCheck /> : <IoCloudOfflineOutline />} Create
-                    </button>
-                </div>
-            </form>
+        {currentUser && isAdding && (
+            <div className="mb-4 p-3 bg-white rounded-lg border border-gray-200"><h3 className="text-sm font-semibold text-gray-900 mb-3">Add New Category</h3><form onSubmit={handleSaveCategory} className="space-y-3"><input type="text" value={newCategoryName} onChange={(e) => setNewCategoryName(e.target.value)} placeholder="Category name" className="w-full p-2.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" autoFocus /><div className="flex gap-2"><button type="button" onClick={cancelAdd} className="flex-1 px-3 py-2 bg-gray-100 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-200">Cancel</button><button type="submit" disabled={!newCategoryName.trim()} className="flex-1 px-3 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center justify-center">{isOnline ? <MdCheck className="mr-1" size={14} /> : <IoCloudOfflineOutline className="mr-1" size={14} />}Save</button></div></form></div>
         )}
         
-        <div className="mt-6">
-            {loading && filteredCategories.length === 0 ? <CategoriesSkeleton /> : filteredCategories.length > 0 ? (
-                <div className="space-y-3">
-                    {filteredCategories.map(category => (
-                        renamingCategoryId === category.id ? (
-                            <form onSubmit={handleSaveRename} key={category.id} className="p-4 bg-white rounded-xl shadow-lg border-2 border-blue-500">
-                                <div className="flex gap-2 items-center">
-                                    <input type="text" value={renamingCategoryName} onChange={(e) => setRenamingCategoryName(e.target.value)} className="flex-1 p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" autoFocus />
-                                    <button type="button" onClick={cancelRename} className="px-4 py-2 bg-gray-200 text-gray-700 font-semibold rounded-lg hover:bg-gray-300"><FaTimes /></button>
-                                    <button type="submit" disabled={!renamingCategoryName.trim()} className="px-4 py-2 bg-green-500 text-white font-semibold rounded-lg hover:bg-green-600 disabled:opacity-50 flex items-center gap-1">
-                                        <MdCheck /> Save
-                                    </button>
-                                </div>
-                            </form>
-                        ) : (
-                            <CategoryItem key={category.id} category={category} isAdmin={isAdmin} onNavigate={handleNavigate} onRenameClick={handleRenameClick} onDeleteClick={handleDelete} />
-                        )
-                    ))}
-                </div>
+        <div className="space-y-2 mt-4">
+            {categories && categories.length > 0 ? (
+                categories.map(category => (
+                    currentUser && renamingCategoryId === category.id ? (
+                        <div key={category.id} className="p-3 bg-white rounded-lg border-2 border-blue-200"><h3 className="text-sm font-semibold text-gray-900 mb-3">Edit Category</h3><form onSubmit={handleSaveRename} className="space-y-3"><input type="text" value={renamingCategoryName} onChange={(e) => setRenamingCategoryName(e.target.value)} className="w-full p-2.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" autoFocus /><div className="flex gap-2"><button type="button" onClick={cancelRename} className="flex-1 px-3 py-2 bg-gray-100 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-200">Cancel</button><button type="submit" disabled={!renamingCategoryName.trim()} className="flex-1 px-3 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50">Save</button></div></form></div>
+                    ) : (
+                        <CategoryItem key={category.id} category={category} currentUser={currentUser} onNavigate={handleNavigate} onRenameClick={handleRenameClick} onDeleteClick={handleDelete} />
+                    )
+                ))
             ) : (<EmptyState />)}
         </div>
       </div>
@@ -183,26 +119,28 @@ const ResourceCategories = ({ setHeaderTitle }) => {
   );
 };
 
-const CategoryItem = ({ category, isAdmin, onNavigate, onRenameClick, onDeleteClick }) => {
+const CategoryItem = ({ category, currentUser, onNavigate, onRenameClick, onDeleteClick }) => {
     const isPending = category._metadata?.hasPendingWrites;
     return (
-        <div className={`group bg-white rounded-xl shadow-sm border border-gray-200 hover:shadow-lg hover:border-blue-300 transition-all duration-300 ${isPending ? 'opacity-60' : ''}`}>
-            <div className="p-6 flex items-center justify-between">
-                <div onClick={() => onNavigate(category.id)} className="flex items-center space-x-4 cursor-pointer flex-grow min-w-0">
-                    <div className="p-3 bg-blue-100 rounded-lg"><FaFolder className="text-blue-600" /></div>
-                    <div>
-                        <h3 className="font-semibold text-xl text-gray-900 group-hover:text-blue-600 truncate">
-                            {category.name}
-                            {isPending && <span className="text-sm font-normal text-gray-500"> (saving...)</span>}
-                        </h3>
-                        <p className="text-gray-500 text-sm mt-1">Click to view resources</p>
-                    </div>
+        <div className={`group bg-white rounded-lg border transition-all duration-200 cursor-pointer ${isPending ? 'opacity-75' : ''} border-gray-100 hover:border-gray-200 hover:bg-gray-50 hover:shadow-sm`} onClick={() => onNavigate(category.id)}>
+            <div className="p-3 flex items-center gap-3">
+                <div className="w-10 h-10 bg-gradient-to-br from-blue-100 to-indigo-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                    <FaFolder className="text-blue-600" size={16}/>
                 </div>
-                {/* --- CHANGE: Action buttons now work offline --- */}
-                {isAdmin && (
-                    <div className="flex items-center space-x-2 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
-                        <button onClick={() => onRenameClick(category)} className="p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg"><MdEdit className="text-lg" /></button>
-                        <button onClick={() => onDeleteClick(category.id)} className="p-2 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-lg"><MdDelete className="text-lg" /></button>
+                <div className="flex-1 min-w-0">
+                    {/* --- IMPROVED TEXT WRAPPING --- */}
+                    <h3 className="font-semibold text-base text-gray-900 mb-0.5 break-words leading-snug group-hover:text-blue-600">
+                        {category.name}
+                    </h3>
+                    <p className="text-xs text-gray-500">
+                        Tap to view resources
+                        {isPending && <span className="text-orange-600 font-medium ml-1">• Syncing...</span>}
+                    </p>
+                </div>
+                {currentUser && (
+                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
+                        <button onClick={(e) => { e.stopPropagation(); onRenameClick(category); }} className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-md" title="Edit category"><MdEdit size={16} /></button>
+                        <button onClick={(e) => { e.stopPropagation(); onDeleteClick(category.id); }} className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-md" title="Delete category"><MdDelete size={16} /></button>
                     </div>
                 )}
             </div>
